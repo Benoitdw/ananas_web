@@ -8,7 +8,7 @@
    * competence a ete mal lue, et de corriger son texte.
    */
   import { api, ApiError } from '$lib/api';
-  import type { Profile } from '$lib/types';
+  import type { CvImport, Profile } from '$lib/types';
 
   type Props = { profile: Profile; onsaved: (p: Profile) => void };
   let { profile, onsaved }: Props = $props();
@@ -32,6 +32,13 @@
   });
   let error = $state('');
   let justSaved = $state(false);
+
+  // --- import PDF
+  let fileInput: HTMLInputElement;
+  let importing = $state(false);
+  let importError = $state('');
+  let imported = $state<CvImport | null>(null);
+  let dragging = $state(false);
 
   const dirty = $derived(cv !== profile.cv_text || aspirations !== profile.aspirations);
   const empty = $derived(!cv.trim() && !aspirations.trim());
@@ -61,6 +68,33 @@
       ['avoid', d.avoid]
     ].filter(([, v]) => (v as string[]).length && (v as string[])[0]) as [string, string[]][];
   });
+
+  /** Remplit le champ CV a partir d'un PDF, sans lancer l'analyse: une
+   *  extraction PDF melange souvent les colonnes, l'utilisateur doit pouvoir
+   *  relire avant. */
+  async function importPdf(file: File | undefined) {
+    if (!file) return;
+    importing = true;
+    importError = '';
+    imported = null;
+    try {
+      const result = await api.upload<CvImport>('/api/me/profile/cv-file', file);
+      cv = result.text;
+      imported = result;
+    } catch (err) {
+      importError =
+        err instanceof ApiError ? err.message : "Impossible de lire ce fichier.";
+    } finally {
+      importing = false;
+      if (fileInput) fileInput.value = '';
+    }
+  }
+
+  function onDrop(event: DragEvent) {
+    event.preventDefault();
+    dragging = false;
+    importPdf(event.dataTransfer?.files?.[0]);
+  }
 
   async function save(event: SubmitEvent) {
     event.preventDefault();
@@ -93,6 +127,51 @@
 
   <div class="field">
     <label for="cv">Ton CV</label>
+
+    <div
+      class="dropzone"
+      class:dragging
+      ondragover={(e) => {
+        e.preventDefault();
+        dragging = true;
+      }}
+      ondragleave={() => (dragging = false)}
+      ondrop={onDrop}
+      role="presentation"
+    >
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        onclick={() => fileInput.click()}
+        disabled={importing}
+      >
+        {importing ? 'Lecture du PDF…' : 'Importer un PDF'}
+      </button>
+      <span class="small muted">ou depose ton CV ici</span>
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept="application/pdf,.pdf"
+        hidden
+        onchange={(e) => importPdf(e.currentTarget.files?.[0])}
+      />
+    </div>
+
+    {#if importError}
+      <p class="alert alert-error small">{importError}</p>
+    {:else if imported}
+      <p class="alert alert-ok small">
+        <strong>{imported.filename}</strong> importe ({imported.pages}
+        page{imported.pages > 1 ? 's' : ''}).
+        {#if imported.method === 'modele'}
+          Ce PDF etant un scan, le texte a ete transcrit automatiquement —
+          relis-le attentivement.
+        {:else}
+          Relis le texte ci-dessous : une extraction PDF melange parfois les colonnes.
+        {/if}
+      </p>
+    {/if}
+
     <textarea
       id="cv"
       bind:value={cv}
@@ -101,7 +180,7 @@
       placeholder="Colle ici le texte de ton CV : experiences, competences, langues, localisation…"
     ></textarea>
     <p class="small muted hint">
-      Du texte brut suffit. Plus il est detaille, plus les scores sont justes.
+      PDF ou texte colle a la main. Plus c'est detaille, plus les scores sont justes.
     </p>
   </div>
 
@@ -172,9 +251,24 @@
 
   .field { margin-bottom: 1.1rem; }
 
+  .dropzone {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone.dragging { border-color: var(--leaf); background: #eaf5f3; }
+
   .hint { margin: 0.35rem 0 0; }
 
   .alert { margin: 0.9rem 0 0; }
+  .field .alert { margin: 0 0 0.6rem; }
 
   code { background: #f0ede4; padding: 0.05rem 0.3rem; border-radius: 4px; font-size: 0.85em; }
 

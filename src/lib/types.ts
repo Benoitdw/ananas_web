@@ -104,6 +104,14 @@ export type ProfileData = {
   summary: string;
 };
 
+export type CvImport = {
+  text: string;
+  pages: number;
+  filename: string;
+  /** 'texte' = couche texte du PDF, 'modele' = scan transcrit par le modele */
+  method: 'texte' | 'modele';
+};
+
 export type Profile = {
   cv_text: string;
   aspirations: string;

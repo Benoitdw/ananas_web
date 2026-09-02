@@ -23,9 +23,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // Un FormData porte son propre Content-Type (avec la frontiere multipart):
+  // le fixer a la main casserait l'envoi de fichier.
+  const isForm = init.body instanceof FormData;
   const response = await fetch(`${API_URL}${path}`, {
     credentials: 'include',
-    headers: init.body ? { 'Content-Type': 'application/json' } : {},
+    headers: init.body && !isForm ? { 'Content-Type': 'application/json' } : {},
     ...init
   });
 
@@ -54,6 +57,11 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  upload: <T>(path: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<T>(path, { method: 'POST', body: form });
+  },
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   put: <T>(path: string) => request<T>(path, { method: 'PUT' }),

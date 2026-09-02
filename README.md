@@ -49,6 +49,11 @@ lignes.
 d'API ni quota, visuellement identique au `carto-positron` du POC d'origine.
 Le CDN de CARTO, lui, exige desormais une cle.
 
+**L'import PDF remplit le champ, il ne lance pas l'analyse.** Une extraction
+PDF melange parfois les colonnes : l'utilisateur doit pouvoir relire et
+corriger avant, sinon un profil faux produit des scores faux sans que rien ne
+le signale.
+
 **Le profil montre ce qui a ete compris** (`ProfileForm.svelte`). Apres
 analyse du CV, l'interface affiche la forme structuree qui en a ete extraite —
 metiers vises, competences, ce qu'on veut eviter. C'est la seule facon pour
