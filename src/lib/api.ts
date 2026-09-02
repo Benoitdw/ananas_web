@@ -4,9 +4,12 @@
  * `credentials: 'include'` est indispensable: la session vit dans un cookie
  * httpOnly pose par FastAPI, sur une origine differente de celle du front.
  */
-import { PUBLIC_API_URL } from '$env/static/public';
+// dynamic (pas static): l'image de prod est buildee une fois et publiee sur
+// ghcr.io, PUBLIC_API_URL doit donc rester lisible au runtime (adapter-node),
+// pas figee au build.
+import { env } from '$env/dynamic/public';
 
-export const API_URL = PUBLIC_API_URL || 'http://localhost:8000';
+export const API_URL = env.PUBLIC_API_URL || 'http://localhost:8000';
 
 export class ApiError extends Error {
   status: number;
