@@ -25,6 +25,7 @@
     unlocated
   } from '$lib/stores/companies';
   import { authReady, user } from '$lib/stores/auth';
+  import { SOURCE_LABELS } from '$lib/sources';
   import { page } from '$app/state';
   import type { Company } from '$lib/types';
 
@@ -127,8 +128,9 @@
 
       <select bind:value={$filters.source} aria-label="Provenance">
         <option value="">Toutes provenances</option>
-        <option value="biowin">Repertoire BioWin</option>
-        <option value="from_user">Proposees par des utilisateurs</option>
+        {#each Object.entries(SOURCE_LABELS) as [value, label]}
+          <option {value}>{label}</option>
+        {/each}
       </select>
 
       <label class="check">

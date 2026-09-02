@@ -26,11 +26,24 @@ npm run dev          # http://localhost:5173
 | `/` | hero banner |
 | `/register`, `/login` | compte actif des la creation, aucun mail a valider |
 | `/map` | carte + filtres + fiche entreprise + enregistrement |
-| `/jobs` | offres ouvertes chez les entreprises suivies |
+| `/jobs` | offres ouvertes — ta veille, ou tout le repertoire scrape (`scope`), avec suivi en un clic |
 | `/companies/new` | proposer une entreprise absente du repertoire |
+| `/companies/[id]/edit` | corriger une fiche — administration, ou son auteur |
 | `/settings` | profil (CV + aspirations), seuil de pertinence, connexion Telegram |
+| `/admin` | repertoire et comptes, reserve a l'administration |
 
 ## Points d'architecture
+
+**Aucune permission n'est decidee ici.** `/admin` et l'ecran de correction
+cachent ce que l'API refuserait de toute facon : `/api/admin/*` repond 403 a un
+compte ordinaire, et `PATCH /api/companies/{id}` verifie l'auteur de la fiche.
+Le front se contente de lire deux verdicts, `user.is_admin` et
+`CompanyDetail.can_edit` — reimplementer la regle cote client, c'est se
+condamner a la voir diverger.
+
+**Un seul formulaire d'entreprise** (`CompanyFields.svelte`), partage par la
+proposition et la correction : une fiche doit se corriger comme elle s'ecrit,
+mêmes libelles et même ordre des champs.
 
 **SPA, pas de SSR** (`src/routes/+layout.ts`). La session est un cookie
 httpOnly pose par l'API sur une autre origine : le rendu serveur de SvelteKit

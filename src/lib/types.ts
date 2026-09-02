@@ -1,6 +1,6 @@
-export type User = { id: number; email: string; created_at: string };
+export type User = { id: number; email: string; created_at: string; is_admin: boolean };
 
-export type CompanySource = 'biowin' | 'from_user';
+export type CompanySource = 'biowin' | 'curated' | 'from_user';
 
 export type Company = {
   id: number;
@@ -39,6 +39,12 @@ export type JobWithCompany = Job & {
   company_id: number;
   company_name: string;
   company_slug: string;
+  /** False quand l'offre vient d'une entreprise pas encore suivie (feed
+   *  "toutes les entreprises"). Toujours true en scope 'saved'. */
+  company_saved: boolean;
+  /** L'utilisateur a explicitement ecarte cette offre. Absente du feed par
+   *  defaut — voir includeHidden sur /jobs. */
+  is_hidden: boolean;
 };
 
 export type CompanyDetail = Company & {
@@ -60,8 +66,34 @@ export type CompanyDetail = Company & {
   careers_url: string | null;
   scraper_key: string | null;
   last_scraped_at: string | null;
+  /** L'administration, ou l'utilisateur qui a propose cette entreprise. */
+  can_edit: boolean;
   jobs: Job[];
 };
+
+/** Champs modifiables d'une fiche. Envoyes en PATCH: le serveur ne touche
+ *  qu'aux cles presentes, recompose l'adresse et ne re-geocode que si elle a
+ *  change. */
+export type CompanyUpdate = {
+  name: string;
+  tags: string[];
+  website: string;
+  careers_url: string;
+  type: string;
+  baseline: string;
+  description: string;
+  street: string;
+  postal_code: string;
+  city: string;
+  country: string;
+  email: string;
+  phone: string;
+  linkedin: string;
+};
+
+/** Ce que le formulaire manipule: la fiche sans ses tags, qui ont leur propre
+ *  composant de saisie. */
+export type CompanyFormFields = Omit<CompanyUpdate, 'tags'>;
 
 export type Channel = {
   id: number;
@@ -143,6 +175,27 @@ export type CompanySubmit = {
   phone: string;
   linkedin: string;
   save: boolean;
+};
+
+export type AdminUser = {
+  id: number;
+  email: string;
+  created_at: string;
+  is_active: boolean;
+  is_admin: boolean;
+  saved_companies: number;
+  submitted_companies: number;
+  channels: number;
+  has_profile: boolean;
+};
+
+export type AdminStats = {
+  users: number;
+  companies: number;
+  companies_by_source: Record<string, number>;
+  user_submissions: number;
+  jobs_open: number;
+  scrapers: number;
 };
 
 /** Corps du 409 renvoye quand l'entreprise existe deja. */

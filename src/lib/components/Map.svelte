@@ -32,14 +32,48 @@
 
   const STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
+  // Une entreprise geocodee a la ville tombe exactement sur le point de sa
+  // commune: dix se superposent a Leuven, huit a Bruxelles, sept a Gosselies,
+  // et un seul marqueur serait cliquable. On les eclate autour de ce point a
+  // l'affichage uniquement — les coordonnees stockees ne bougent pas, et
+  // `geo_precision` continue de dire "ville" dans la fiche.
+  const SPREAD_M = 450;
+  const GOLDEN_ANGLE = 137.508 * (Math.PI / 180);
+  const M_PER_DEG = 111_320;
+
+  /** Decale un point sur un cercle de SPREAD_M, a un angle deduit de l'id.
+   *  L'angle d'or separe au mieux des ids consecutifs — ceux d'une meme ville,
+   *  importes a la suite — et l'offset ne depend que de l'entreprise: filtrer
+   *  la carte ne fait pas sauter les marqueurs restants. */
+  function fanOut(lon: number, lat: number, id: number): [number, number] {
+    const angle = id * GOLDEN_ANGLE;
+    return [
+      lon + (SPREAD_M * Math.sin(angle)) / (M_PER_DEG * Math.cos((lat * Math.PI) / 180)),
+      lat + (SPREAD_M * Math.cos(angle)) / M_PER_DEG
+    ];
+  }
+
   function toGeoJSON(list: Company[]) {
+    const located = list.filter((c) => c.lat !== null && c.lon !== null);
+
+    const occupants = new Map<string, number>();
+    for (const c of located) {
+      const key = `${c.lat},${c.lon}`;
+      occupants.set(key, (occupants.get(key) ?? 0) + 1);
+    }
+
     return {
       type: 'FeatureCollection' as const,
-      features: list
-        .filter((c) => c.lat !== null && c.lon !== null)
-        .map((c) => ({
+      features: located.map((c) => {
+        const lon = c.lon as number;
+        const lat = c.lat as number;
+        const shared = (occupants.get(`${c.lat},${c.lon}`) ?? 0) > 1;
+        return {
           type: 'Feature' as const,
-          geometry: { type: 'Point' as const, coordinates: [c.lon as number, c.lat as number] },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: shared ? fanOut(lon, lat, c.id) : [lon, lat]
+          },
           properties: {
             id: c.id,
             name: c.name,
@@ -47,7 +81,8 @@
             saved: c.is_saved,
             selected: c.id === selectedId
           }
-        }))
+        };
+      })
     };
   }
 

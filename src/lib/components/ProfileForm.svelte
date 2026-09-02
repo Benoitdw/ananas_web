@@ -127,7 +127,7 @@
 
   <div class="field">
     <label for="cv">Ton CV</label>
-
+    <p class="small muted hint">The extraction is not ready yet. You can try it but we recommand you to ask a LLM to extract your CV in text.</p>
     <div
       class="dropzone"
       class:dragging

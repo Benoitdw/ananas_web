@@ -6,8 +6,11 @@
   const links = [
     { href: '/map', label: 'Carte' },
     { href: '/jobs', label: 'Offres', auth: true },
-    { href: '/settings', label: 'Parametres', auth: true }
-  ];
+    { href: '/settings', label: 'Parametres', auth: true },
+    // Cache pour les autres, mais c'est l'API qui protege: /api/admin/*
+    // repond 403 a un compte ordinaire.
+    { href: '/admin', label: 'Admin', admin: true }
+  ] as { href: string; label: string; auth?: boolean; admin?: boolean }[];
 
   async function onLogout() {
     await logout();
@@ -20,7 +23,7 @@
 
   <div class="links">
     {#each links as link}
-      {#if !link.auth || $user}
+      {#if link.admin ? $user?.is_admin : !link.auth || $user}
         <a href={link.href} class:active={page.url.pathname === link.href}>{link.label}</a>
       {/if}
     {/each}

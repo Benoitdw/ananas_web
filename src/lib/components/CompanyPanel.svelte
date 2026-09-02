@@ -173,11 +173,19 @@
       </details>
     {/if}
 
+    {#if detail.can_edit}
+      <a class="btn btn-ghost btn-sm edit" href="/companies/{detail.id}/edit">
+        Modifier cette fiche
+      </a>
+    {/if}
+
     <p class="small muted source">
       {#if fromUser}
         Proposee par {detail.submitted_by_email ?? 'un utilisateur'}
       {:else if detail.source_url}
         <a href={detail.source_url} target="_blank" rel="noopener">Fiche BioWin d'origine</a>
+      {:else if detail.source === 'curated'}
+        Repertoire Ananas
       {/if}
     </p>
   {/if}
@@ -262,6 +270,8 @@
 
   details { margin-top: 1rem; }
   summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+
+  .edit { display: inline-block; margin-top: 1rem; }
 
   .source { margin-top: 1rem; }
 
