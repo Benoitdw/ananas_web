@@ -1,0 +1,120 @@
+/* Palette: ananas — jaune mur, vert feuille, teal du POC pour les marqueurs. */
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --border: #e6e2d8;
+  --text: #1d2321;
+  --muted: #6c7671;
+
+  --brand: #f2b705;       /* jaune ananas */
+  --brand-dark: #d99e04;
+  --leaf: #2a9d8f;        /* teal — marqueur entreprise */
+  --leaf-dark: #21867a;
+  --saved: #e76f51;       /* orange — marqueur favori */
+  --danger: #c0392b;
+
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 12px rgba(16, 24, 40, 0.06);
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--leaf-dark); }
+
+h1, h2, h3 { line-height: 1.2; margin: 0 0 0.5em; letter-spacing: -0.02em; }
+
+/* ------------------------------------------------------------- formulaires */
+
+input, select, textarea, button { font: inherit; }
+
+input[type='text'], input[type='email'], input[type='password'], input[type='search'], select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--leaf);
+  outline-offset: 1px;
+}
+
+label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--leaf);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:hover { background: var(--leaf-dark); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-brand { background: var(--brand); color: #1d2321; }
+.btn-brand:hover { background: var(--brand-dark); }
+
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-ghost:hover { background: #f2efe8; }
+
+.btn-saved { background: var(--saved); }
+.btn-saved:hover { background: #d3583b; }
+
+.btn-sm { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+
+/* ------------------------------------------------------------------ divers */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+
+.tag {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #f0ede4;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.alert {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  border: 1px solid;
+}
+.alert-error { background: #fdf0ee; border-color: #f2c9c1; color: #8f2c1c; }
+.alert-ok { background: #eefaf6; border-color: #b8e5da; color: #1d6b5e; }
+.alert-warn { background: #fdf7e6; border-color: #f0dfa8; color: #7a5c05; }
+
+.container { max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; }
