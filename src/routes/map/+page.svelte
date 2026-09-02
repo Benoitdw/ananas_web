@@ -24,7 +24,8 @@
     toggleSaved,
     unlocated
   } from '$lib/stores/companies';
-  import { authReady } from '$lib/stores/auth';
+  import { authReady, user } from '$lib/stores/auth';
+  import { page } from '$app/state';
   import type { Company } from '$lib/types';
 
   let selectedId = $state<number | null>(null);
@@ -37,7 +38,10 @@
 
   const selected = $derived($filtered.find((c) => c.id === selectedId) ?? null);
   const activeFilters = $derived(
-    Number(!!$filters.type) + Number(!!$filters.core_business) + Number($filters.savedOnly)
+    Number(!!$filters.type) +
+      Number(!!$filters.tag) +
+      Number(!!$filters.source) +
+      Number($filters.savedOnly)
   );
 
   // On (re)charge apres la resolution de la session: la reponse porte
@@ -47,6 +51,17 @@
     if ($authReady && !loadedFor) {
       loadedFor = true;
       loadCompanies().catch(() => (error = 'Impossible de charger les entreprises.'));
+    }
+  });
+
+  // Lien profond ?company=<id>, utilise par le formulaire quand l'entreprise
+  // proposee existe deja: on ouvre la fiche existante au lieu du doublon.
+  let deepLinked = $state(false);
+  $effect(() => {
+    const id = Number(page.url.searchParams.get('company'));
+    if (!deepLinked && id && $filtered.some((c) => c.id === id)) {
+      deepLinked = true;
+      select(id);
     }
   });
 
@@ -78,7 +93,7 @@
   }
 
   function reset() {
-    $filters = { q: '', type: '', core_business: '', savedOnly: false };
+    $filters = { q: '', type: '', tag: '', source: '', savedOnly: false };
   }
 </script>
 
@@ -105,9 +120,15 @@
         {#each $facets.types as type}<option value={type}>{type}</option>{/each}
       </select>
 
-      <select bind:value={$filters.core_business} aria-label="Secteur d'activite">
-        <option value="">Tous les secteurs</option>
-        {#each $facets.core_businesses as sector}<option value={sector}>{sector}</option>{/each}
+      <select bind:value={$filters.tag} aria-label="Tag">
+        <option value="">Tous les tags</option>
+        {#each $facets.tags as tag}<option value={tag}>{tag}</option>{/each}
+      </select>
+
+      <select bind:value={$filters.source} aria-label="Provenance">
+        <option value="">Toutes provenances</option>
+        <option value="biowin">Repertoire BioWin</option>
+        <option value="from_user">Proposees par des utilisateurs</option>
       </select>
 
       <label class="check">
@@ -115,6 +136,10 @@
         Seulement mes entreprises enregistrees
       </label>
     </div>
+
+    {#if $user}
+      <a class="btn btn-ghost btn-sm add" href="/companies/new">+ Proposer une entreprise</a>
+    {/if}
 
     <div class="count small muted">
       {#if $loading}
@@ -224,6 +249,12 @@
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+  }
+
+  .add {
+    display: block;
+    margin: 0 0.9rem 0.7rem;
+    text-align: center;
   }
 
   .count {

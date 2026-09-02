@@ -10,10 +10,10 @@ import { api } from '$lib/api';
 import type { Company, Facets } from '$lib/types';
 
 export const companies = writable<Company[]>([]);
-export const facets = writable<Facets>({ types: [], core_businesses: [] });
+export const facets = writable<Facets>({ types: [], tags: [], core_businesses: [] });
 export const loading = writable(false);
 
-export const filters = writable({ q: '', type: '', core_business: '', savedOnly: false });
+export const filters = writable({ q: '', type: '', tag: '', source: '', savedOnly: false });
 
 export async function loadCompanies(): Promise<void> {
   loading.set(true);
@@ -29,14 +29,20 @@ export async function loadCompanies(): Promise<void> {
   }
 }
 
+/** Tags BioWin et tags utilisateur reunis: un seul vocabulaire cote interface. */
+export function companyTags(c: Company): string[] {
+  return [...new Set(`${c.core_business},${c.tags}`.split(',').map((t) => t.trim()).filter(Boolean))];
+}
+
 export const filtered = derived([companies, filters], ([$companies, $filters]) => {
   const q = $filters.q.trim().toLowerCase();
   return $companies.filter((c) => {
     if ($filters.savedOnly && !c.is_saved) return false;
     if ($filters.type && c.type !== $filters.type) return false;
-    if ($filters.core_business && !c.core_business.includes($filters.core_business)) return false;
+    if ($filters.source && c.source !== $filters.source) return false;
+    if ($filters.tag && !companyTags(c).includes($filters.tag)) return false;
     if (!q) return true;
-    return `${c.name} ${c.city} ${c.core_business} ${c.type}`.toLowerCase().includes(q);
+    return `${c.name} ${c.city} ${companyTags(c).join(' ')} ${c.type}`.toLowerCase().includes(q);
   });
 });
 
@@ -66,4 +72,13 @@ export async function toggleSaved(company: Company): Promise<void> {
 
 export function savedCount(): number {
   return get(companies).filter((c) => c.is_saved).length;
+}
+
+/** Insere une entreprise fraichement proposee sans recharger toute la liste. */
+export function addCompany(company: Company): void {
+  companies.update((list) =>
+    [...list.filter((c) => c.id !== company.id), company].sort((a, b) =>
+      a.name.localeCompare(b.name, 'fr')
+    )
+  );
 }

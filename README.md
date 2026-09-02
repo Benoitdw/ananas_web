@@ -27,6 +27,7 @@ npm run dev          # http://localhost:5173
 | `/register`, `/login` | compte actif des la creation, aucun mail a valider |
 | `/map` | carte + filtres + fiche entreprise + enregistrement |
 | `/jobs` | offres ouvertes chez les entreprises suivies |
+| `/companies/new` | proposer une entreprise absente du repertoire |
 | `/settings` | chat_id Telegram et bouton d'envoi de test |
 
 ## Points d'architecture
@@ -47,6 +48,12 @@ lignes.
 **Fond de carte OpenFreeMap** (style `positron`) : vecteur, gratuit, sans cle
 d'API ni quota, visuellement identique au `carto-positron` du POC d'origine.
 Le CDN de CARTO, lui, exige desormais une cle.
+
+**Saisie de tags guidee** (`TagInput.svelte`). Les tags servent aux *autres*
+utilisateurs a filtrer: leur valeur depend de leur reutilisation. Le champ met
+donc en avant les tags deja presents, et une suggestion cliquee est ajoutee
+telle quelle — la normaliser en creerait une variante. Le serveur reste
+l'autorite et rattache les saisies libres au vocabulaire existant.
 
 **Favoris optimistes.** `toggleSaved` met le store a jour avant l'aller-retour
 reseau et revient en arriere si l'appel echoue : la carte reagit au clic.

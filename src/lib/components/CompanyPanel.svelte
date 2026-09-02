@@ -3,6 +3,7 @@
   import { api } from '$lib/api';
   import type { Company, CompanyDetail } from '$lib/types';
   import { user } from '$lib/stores/auth';
+  import { companyTags } from '$lib/stores/companies';
 
   type Props = {
     company: Company;
@@ -27,12 +28,10 @@
       .catch(() => (error = 'Fiche indisponible.'));
   });
 
-  const sectors = $derived(
-    (detail?.core_business ?? company.core_business)
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-  );
+  // Tags BioWin et tags utilisateur affiches ensemble: un seul vocabulaire.
+  const tags = $derived(companyTags(detail ?? company));
+
+  const fromUser = $derived((detail ?? company).source === 'from_user');
 
   /** Le POC signalait honnetement les positions approximatives; on garde ça. */
   const geoWarning = $derived.by(() => {
@@ -53,7 +52,9 @@
   <header>
     <div>
       <h2>{company.name}</h2>
-      <p class="small muted">{company.type}{company.city ? ` · ${company.city}` : ''}</p>
+      <p class="small muted">
+        {[company.type, company.city].filter(Boolean).join(' · ')}
+      </p>
     </div>
     <button class="close" onclick={onclose} aria-label="Fermer la fiche">×</button>
   </header>
@@ -84,9 +85,9 @@
       <p class="baseline">{detail.baseline}</p>
     {/if}
 
-    {#if sectors.length}
+    {#if tags.length}
       <div class="tags">
-        {#each sectors as sector}<span class="tag">{sector}</span>{/each}
+        {#each tags as tag}<span class="tag">{tag}</span>{/each}
       </div>
     {/if}
 
@@ -141,11 +142,13 @@
       </details>
     {/if}
 
-    {#if detail.source_url}
-      <p class="small muted source">
-        <a href={detail.source_url} target="_blank" rel="noopener">Fiche d'origine</a>
-      </p>
-    {/if}
+    <p class="small muted source">
+      {#if fromUser}
+        Proposee par {detail.submitted_by_email ?? 'un utilisateur'}
+      {:else if detail.source_url}
+        <a href={detail.source_url} target="_blank" rel="noopener">Fiche BioWin d'origine</a>
+      {/if}
+    </p>
   {/if}
 </aside>
 

@@ -1,11 +1,15 @@
 export type User = { id: number; email: string; created_at: string };
 
+export type CompanySource = 'biowin' | 'from_user';
+
 export type Company = {
   id: number;
   slug: string;
   name: string;
   type: string;
   core_business: string;
+  tags: string;
+  source: CompanySource;
   city: string;
   lat: number | null;
   lon: number | null;
@@ -32,6 +36,7 @@ export type JobWithCompany = Job & {
 };
 
 export type CompanyDetail = Company & {
+  submitted_by_email: string | null;
   other_tags: string;
   baseline: string;
   description: string;
@@ -62,4 +67,31 @@ export type Channel = {
 
 export type ChannelType = { type: string; label: string; configured: boolean };
 
-export type Facets = { types: string[]; core_businesses: string[] };
+/** `tags` reunit les secteurs BioWin et les tags saisis par les utilisateurs:
+ *  un seul vocabulaire, donc un seul filtre. */
+export type Facets = { types: string[]; tags: string[]; core_businesses: string[] };
+
+export type CompanySubmit = {
+  name: string;
+  tags: string[];
+  website: string;
+  careers_url: string;
+  type: string;
+  baseline: string;
+  description: string;
+  street: string;
+  postal_code: string;
+  city: string;
+  country: string;
+  email: string;
+  phone: string;
+  linkedin: string;
+  save: boolean;
+};
+
+/** Corps du 409 renvoye quand l'entreprise existe deja. */
+export type SubmitConflict = {
+  detail: string;
+  company_id: number;
+  company_name: string;
+};

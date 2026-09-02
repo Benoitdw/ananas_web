@@ -10,9 +10,15 @@ export const API_URL = PUBLIC_API_URL || 'http://localhost:8000';
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Corps brut de la reponse. Certains cas portent plus qu'un message: le 409
+   *  de proposition d'entreprise renvoie l'entreprise deja existante, pour que
+   *  le front propose de l'ouvrir plutot que de creer un doublon. */
+  body: unknown;
+
+  constructor(status: number, message: string, body?: unknown) {
     super(message);
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -24,15 +30,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    // FastAPI renvoie {detail: "..."} ; en validation, detail est une liste.
+    // FastAPI renvoie {detail: ...}: une chaine, une liste (validation) ou un
+    // objet (cas metier qui transportent plus qu'un message).
     let detail = response.statusText;
+    let raw: unknown;
     try {
       const body = await response.json();
-      detail = Array.isArray(body.detail) ? body.detail[0]?.msg ?? detail : body.detail ?? detail;
+      raw = body.detail;
+      if (Array.isArray(raw)) detail = (raw[0] as { msg?: string })?.msg ?? detail;
+      else if (typeof raw === 'string') detail = raw;
+      else if (raw && typeof raw === 'object')
+        detail = (raw as { detail?: string }).detail ?? detail;
     } catch {
       /* corps vide ou non-JSON: on garde statusText */
     }
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail, raw);
   }
 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
