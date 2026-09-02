@@ -67,6 +67,18 @@ export type Channel = {
 
 export type ChannelType = { type: string; label: string; configured: boolean };
 
+export type TelegramLink = {
+  code: string;
+  url: string;
+  bot_username: string;
+  expires_at: string;
+};
+
+export type TelegramLinkStatus = {
+  status: 'pending' | 'linked';
+  channel: Channel | null;
+};
+
 /** `tags` reunit les secteurs BioWin et les tags saisis par les utilisateurs:
  *  un seul vocabulaire, donc un seul filtre. */
 export type Facets = { types: string[]; tags: string[]; core_businesses: string[] };

@@ -8,6 +8,7 @@
    */
   import { goto } from '$app/navigation';
   import { api, ApiError } from '$lib/api';
+  import TelegramLink from '$lib/components/TelegramLink.svelte';
   import { authReady, user } from '$lib/stores/auth';
   import type { Channel, ChannelType } from '$lib/types';
 
@@ -15,6 +16,7 @@
   let types = $state<ChannelType[]>([]);
   let target = $state('');
   let enabled = $state(true);
+  let manualOpen = $state(false);
   let loading = $state(true);
   let busy = $state(false);
   let message = $state<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -65,6 +67,16 @@
       report(err, 'Enregistrement impossible.');
     } finally {
       busy = false;
+    }
+  }
+
+  async function saveEnabled() {
+    if (!telegram) return;
+    try {
+      const updated = await api.patch<Channel>(`/api/me/channels/${telegram.id}`, { enabled });
+      channels = channels.map((c) => (c.id === updated.id ? updated : c));
+    } catch (err) {
+      report(err, 'Enregistrement impossible.');
     }
   }
 
@@ -120,55 +132,60 @@
         </p>
       {/if}
 
-      <details class="how">
-        <summary class="small">Comment trouver mon identifiant de conversation ?</summary>
-        <ol class="small muted">
-          <li>Ouvre Telegram et envoie un message au bot Ananas (n'importe lequel, « salut » suffit).</li>
-          <li>
-            Ouvre <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> dans un
-            navigateur.
-          </li>
-          <li>Releve la valeur <code>message.chat.id</code> et colle-la ci-dessous.</li>
-        </ol>
-      </details>
-
-      <form onsubmit={save}>
-        <div class="field">
-          <label for="chat">Identifiant de conversation (chat_id)</label>
-          <input
-            id="chat"
-            type="text"
-            bind:value={target}
-            placeholder="123456789"
-            inputmode="numeric"
-            required
-          />
-          <p class="small muted hint">Un nombre entier, negatif s'il s'agit d'un groupe.</p>
-        </div>
+      {#if telegram}
+        <p class="linked small">
+          <strong>Telegram connecte.</strong>
+          Conversation <code>{telegram.target}</code>.
+        </p>
 
         <label class="check">
-          <input type="checkbox" bind:checked={enabled} />
+          <input
+            type="checkbox"
+            bind:checked={enabled}
+            onchange={() => saveEnabled()}
+          />
           Recevoir les notifications quotidiennes
         </label>
 
         <div class="actions">
-          <button class="btn" type="submit" disabled={busy}>Enregistrer</button>
-          <button
-            class="btn btn-ghost"
-            type="button"
-            onclick={sendTest}
-            disabled={busy || !telegram}
-            title={telegram ? '' : 'Enregistre d’abord ton identifiant'}
-          >
+          <button class="btn btn-ghost" type="button" onclick={sendTest} disabled={busy}>
             Envoyer un test
           </button>
-          {#if telegram}
-            <button class="btn btn-ghost danger" type="button" onclick={remove} disabled={busy}>
-              Supprimer
-            </button>
-          {/if}
+          <button class="btn btn-ghost danger" type="button" onclick={remove} disabled={busy}>
+            Deconnecter
+          </button>
         </div>
-      </form>
+      {:else}
+        <p class="muted small">
+          Un appui sur « Demarrer » dans Telegram suffit : c'est le serveur qui reconnait ta
+          conversation. Tu n'as aucun identifiant a chercher.
+        </p>
+
+        <TelegramLink onlinked={(channel) => { channels = [...channels.filter((c) => c.type !== 'telegram'), channel]; target = channel.target; enabled = channel.enabled; message = { kind: 'ok', text: 'Telegram connecte.' }; }} />
+
+        <details class="how">
+          <summary class="small">Saisir un identifiant de conversation a la main</summary>
+          <form onsubmit={save}>
+            <p class="small muted">
+              Utile seulement si tu connais deja ton <code>chat_id</code>, par exemple pour
+              envoyer les notifications dans un groupe.
+            </p>
+            <div class="field">
+              <label for="chat">Identifiant de conversation (chat_id)</label>
+              <input
+                id="chat"
+                type="text"
+                bind:value={target}
+                placeholder="123456789"
+                inputmode="numeric"
+                required
+              />
+              <p class="small muted hint">Un nombre entier, negatif s'il s'agit d'un groupe.</p>
+            </div>
+            <button class="btn btn-ghost" type="submit" disabled={busy}>Enregistrer</button>
+          </form>
+        </details>
+      {/if}
 
       {#if message}
         <p class="alert alert-{message.kind === 'ok' ? 'ok' : 'error'} small">{message.text}</p>
@@ -203,10 +220,10 @@
   }
   .block h2 { font-size: 1.05rem; }
 
-  .how { margin: 1rem 0; }
+  .linked { margin: 0 0 1rem; }
+
+  .how { margin: 1.2rem 0 0; }
   .how summary { cursor: pointer; color: var(--muted); font-weight: 600; }
-  .how ol { margin: 0.6rem 0 0; padding-left: 1.2rem; }
-  .how li { margin-bottom: 0.3rem; }
 
   code {
     background: #f0ede4;
@@ -227,6 +244,7 @@
     font-weight: 500;
     margin-bottom: 1.1rem;
   }
+  .how form { margin-top: 0.8rem; }
   .check input { width: auto; }
 
   .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }

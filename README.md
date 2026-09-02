@@ -28,7 +28,7 @@ npm run dev          # http://localhost:5173
 | `/map` | carte + filtres + fiche entreprise + enregistrement |
 | `/jobs` | offres ouvertes chez les entreprises suivies |
 | `/companies/new` | proposer une entreprise absente du repertoire |
-| `/settings` | chat_id Telegram et bouton d'envoi de test |
+| `/settings` | connexion Telegram (lien profond + QR) et envoi de test |
 
 ## Points d'architecture
 
@@ -48,6 +48,13 @@ lignes.
 **Fond de carte OpenFreeMap** (style `positron`) : vecteur, gratuit, sans cle
 d'API ni quota, visuellement identique au `carto-positron` du POC d'origine.
 Le CDN de CARTO, lui, exige desormais une cle.
+
+**Connexion Telegram sans secret** (`TelegramLink.svelte`). Le composant
+n'affiche jamais le token — il demande un code au serveur, en fait un lien
+profond et un QR (`qrcode-generator`, sans dependance), puis interroge le
+serveur toutes les 2,5 s jusqu'a ce que l'utilisateur ait appuye sur
+« Demarrer ». Le compte a rebours evite de laisser quelqu'un attendre devant un
+lien perime.
 
 **Saisie de tags guidee** (`TagInput.svelte`). Les tags servent aux *autres*
 utilisateurs a filtrer: leur valeur depend de leur reutilisation. Le champ met
