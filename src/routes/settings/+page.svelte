@@ -9,8 +9,9 @@
   import { goto } from '$app/navigation';
   import { api, ApiError } from '$lib/api';
   import TelegramLink from '$lib/components/TelegramLink.svelte';
+  import ProfileForm from '$lib/components/ProfileForm.svelte';
   import { authReady, user } from '$lib/stores/auth';
-  import type { Channel, ChannelType } from '$lib/types';
+  import type { Channel, ChannelType, Profile } from '$lib/types';
 
   let channels = $state<Channel[]>([]);
   let types = $state<ChannelType[]>([]);
@@ -20,6 +21,7 @@
   let loading = $state(true);
   let busy = $state(false);
   let message = $state<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  let profile = $state<Profile | null>(null);
 
   const telegram = $derived(channels.find((c) => c.type === 'telegram') ?? null);
   const serverReady = $derived(types.find((t) => t.type === 'telegram')?.configured ?? false);
@@ -30,10 +32,15 @@
 
   $effect(() => {
     if (!$authReady || !$user) return;
-    Promise.all([api.get<Channel[]>('/api/me/channels'), api.get<ChannelType[]>('/api/me/channels/types')])
-      .then(([c, t]) => {
+    Promise.all([
+      api.get<Channel[]>('/api/me/channels'),
+      api.get<ChannelType[]>('/api/me/channels/types'),
+      api.get<Profile>('/api/me/profile')
+    ])
+      .then(([c, t, p]) => {
         channels = c;
         types = t;
+        profile = p;
         const tg = c.find((x) => x.type === 'telegram');
         if (tg) {
           target = tg.target;
@@ -68,6 +75,21 @@
     } finally {
       busy = false;
     }
+  }
+
+  let prefTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Le curseur de seuil emet a chaque pixel: on regroupe les envois. */
+  function savePreference(patch: Record<string, unknown>) {
+    if (profile) profile = { ...profile, ...patch } as Profile;
+    clearTimeout(prefTimer);
+    prefTimer = setTimeout(async () => {
+      try {
+        profile = await api.patch<Profile>('/api/me/profile/preferences', patch);
+      } catch (err) {
+        report(err, 'Enregistrement impossible.');
+      }
+    }, 400);
   }
 
   async function saveEnabled() {
@@ -118,6 +140,55 @@
   {#if loading}
     <p class="muted">Chargement…</p>
   {:else}
+    {#if profile}
+      <section class="card block">
+        <h2>Mon profil professionnel</h2>
+        <p class="muted small">
+          Ananas compare chaque nouvelle offre a ton profil et lui attribue un score. Ça sert a
+          trier tes notifications et a ne voir que les offres qui te concernent.
+        </p>
+
+        <ProfileForm {profile} onsaved={(p) => (profile = p)} />
+      </section>
+
+      {#if profile.data}
+        <section class="card block">
+          <h2>Pertinence</h2>
+
+          <div class="field">
+            <label for="threshold">
+              Seuil de pertinence : <strong>{profile.match_threshold}%</strong>
+            </label>
+            <input
+              id="threshold"
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={profile.match_threshold}
+              oninput={(e) => savePreference({ match_threshold: +e.currentTarget.value })}
+            />
+            <p class="small muted hint">
+              En dessous de ce score, une offre n'est pas consideree comme pertinente.
+            </p>
+          </div>
+
+          <label class="check">
+            <input
+              type="checkbox"
+              checked={profile.notify_only_relevant}
+              onchange={(e) => savePreference({ notify_only_relevant: e.currentTarget.checked })}
+            />
+            Ne me notifier que les offres pertinentes
+          </label>
+          <p class="small muted hint">
+            Une offre pas encore analysee reste notifiee : mieux vaut un message de trop qu'une
+            offre manquee.
+          </p>
+        </section>
+      {/if}
+    {/if}
+
     <section class="card block">
       <h2>Notification Telegram</h2>
       <p class="muted small">
@@ -209,7 +280,9 @@
 </div>
 
 <style>
-  .page { padding: 2.2rem 1.25rem 3rem; max-width: 620px; }
+  .page { padding: 2.2rem 1.25rem 3rem; max-width: 660px; }
+
+  input[type='range'] { width: 100%; accent-color: var(--leaf); }
 
   h1 { font-size: 1.6rem; margin-bottom: 1.4rem; }
 

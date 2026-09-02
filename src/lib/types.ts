@@ -24,9 +24,15 @@ export type Job = {
   title: string;
   url: string;
   location: string | null;
+  department: string | null;
   posted_at: string | null;
   first_seen_at: string;
   closed_at: string | null;
+  /** 0-100. null si l'utilisateur n'a pas de profil ou si l'offre n'est pas
+   *  encore caracterisee — dans les deux cas elle reste visible. */
+  match_score: number | null;
+  match_reasons: string[];
+  summary: string | null;
 };
 
 export type JobWithCompany = Job & {
@@ -36,6 +42,7 @@ export type JobWithCompany = Job & {
 };
 
 export type CompanyDetail = Company & {
+  match_threshold: number | null;
   submitted_by_email: string | null;
   other_tags: string;
   baseline: string;
@@ -81,6 +88,35 @@ export type TelegramLinkStatus = {
 
 /** `tags` reunit les secteurs BioWin et les tags saisis par les utilisateurs:
  *  un seul vocabulaire, donc un seul filtre. */
+/** Forme structuree extraite du CV. Affichee pour que l'utilisateur voie ce
+ *  qui a ete compris de son profil, et puisse le corriger. */
+export type ProfileData = {
+  role_families: string[];
+  seniority: string;
+  years_experience: number;
+  skills: string[];
+  domains: string[];
+  languages: string[];
+  locations: string[];
+  contracts: string[];
+  remote: string;
+  avoid: string[];
+  summary: string;
+};
+
+export type Profile = {
+  cv_text: string;
+  aspirations: string;
+  match_threshold: number;
+  notify_only_relevant: boolean;
+  status: 'ok' | 'error' | null;
+  error: string | null;
+  extracted_at: string | null;
+  version: number;
+  data: ProfileData | null;
+  ai_available: boolean;
+};
+
 export type Facets = { types: string[]; tags: string[]; core_businesses: string[] };
 
 export type CompanySubmit = {

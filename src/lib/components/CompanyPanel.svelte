@@ -4,6 +4,7 @@
   import type { Company, CompanyDetail } from '$lib/types';
   import { user } from '$lib/stores/auth';
   import { companyTags } from '$lib/stores/companies';
+  import MatchBadge from '$lib/components/MatchBadge.svelte';
 
   type Props = {
     company: Company;
@@ -32,6 +33,16 @@
   const tags = $derived(companyTags(detail ?? company));
 
   const fromUser = $derived((detail ?? company).source === 'from_user');
+
+  // Le filtre n'a de sens que si des scores existent
+  let relevantOnly = $state(false);
+  const scored = $derived(detail?.jobs.filter((j) => j.match_score !== null) ?? []);
+  const threshold = $derived(detail?.match_threshold ?? 55);
+  const visibleJobs = $derived(
+    relevantOnly && detail
+      ? detail.jobs.filter((j) => j.match_score === null || j.match_score >= threshold)
+      : (detail?.jobs ?? [])
+  );
 
   /** Le POC signalait honnetement les positions approximatives; on garde ça. */
   const geoWarning = $derived.by(() => {
@@ -116,12 +127,32 @@
 
     <section class="jobs">
       <h3>Offres {detail.jobs.length ? `(${detail.jobs.length})` : ''}</h3>
+
+      {#if scored.length}
+        <label class="check small">
+          <input type="checkbox" bind:checked={relevantOnly} />
+          Seulement les pertinentes (≥ {threshold}%)
+        </label>
+      {/if}
+
       {#if detail.jobs.length}
+        {#if !visibleJobs.length}
+          <p class="small muted">
+            Aucune offre au-dessus de ton seuil. Decoche pour voir les {detail.jobs.length}
+            offres.
+          </p>
+        {/if}
         <ul>
-          {#each detail.jobs as job}
+          {#each visibleJobs as job}
             <li>
-              <a href={job.url} target="_blank" rel="noopener">{job.title}</a>
-              {#if job.location}<span class="small muted"> — {job.location}</span>{/if}
+              <MatchBadge score={job.match_score} reasons={job.match_reasons} compact />
+              <span class="job">
+                <a href={job.url} target="_blank" rel="noopener">{job.title}</a>
+                {#if job.location}<span class="small muted"> — {job.location}</span>{/if}
+                {#if job.match_reasons.length}
+                  <span class="small muted why">{job.match_reasons[0]}</span>
+                {/if}
+              </span>
             </li>
           {/each}
         </ul>
@@ -208,8 +239,26 @@
   dd { margin: 0; overflow-wrap: anywhere; }
 
   .jobs h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
-  .jobs ul { margin: 0; padding-left: 1.1rem; }
-  .jobs li { margin-bottom: 0.35rem; font-size: 0.9rem; overflow-wrap: anywhere; }
+  .jobs ul { margin: 0; padding: 0; list-style: none; }
+  .jobs li {
+    display: flex;
+    gap: 0.45rem;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+  .job { display: flex; flex-direction: column; min-width: 0; }
+  .why { opacity: 0.85; }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.7rem;
+    font-weight: 500;
+  }
+  .check input { width: auto; flex-shrink: 0; }
 
   details { margin-top: 1rem; }
   summary { cursor: pointer; color: var(--muted); font-weight: 600; }

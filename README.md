@@ -28,7 +28,7 @@ npm run dev          # http://localhost:5173
 | `/map` | carte + filtres + fiche entreprise + enregistrement |
 | `/jobs` | offres ouvertes chez les entreprises suivies |
 | `/companies/new` | proposer une entreprise absente du repertoire |
-| `/settings` | connexion Telegram (lien profond + QR) et envoi de test |
+| `/settings` | profil (CV + aspirations), seuil de pertinence, connexion Telegram |
 
 ## Points d'architecture
 
@@ -48,6 +48,12 @@ lignes.
 **Fond de carte OpenFreeMap** (style `positron`) : vecteur, gratuit, sans cle
 d'API ni quota, visuellement identique au `carto-positron` du POC d'origine.
 Le CDN de CARTO, lui, exige desormais une cle.
+
+**Le profil montre ce qui a ete compris** (`ProfileForm.svelte`). Apres
+analyse du CV, l'interface affiche la forme structuree qui en a ete extraite —
+metiers vises, competences, ce qu'on veut eviter. C'est la seule facon pour
+l'utilisateur de constater qu'une ligne a ete mal lue et de corriger son texte,
+plutot que de subir des scores inexplicables.
 
 **Connexion Telegram sans secret** (`TelegramLink.svelte`). Le composant
 n'affiche jamais le token — il demande un code au serveur, en fait un lien

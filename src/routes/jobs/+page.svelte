@@ -3,11 +3,14 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
+  import MatchBadge from '$lib/components/MatchBadge.svelte';
   import { authReady, user } from '$lib/stores/auth';
   import type { JobWithCompany } from '$lib/types';
 
   let jobs = $state<JobWithCompany[]>([]);
   let includeClosed = $state(false);
+  let relevantOnly = $state(false);
+  let sort = $state<'date' | 'score'>('date');
   let loading = $state(true);
   let error = $state('');
 
@@ -16,11 +19,15 @@
   });
 
   $effect(() => {
-    const closed = includeClosed;
+    const params = new URLSearchParams({
+      include_closed: String(includeClosed),
+      relevant_only: String(relevantOnly),
+      sort
+    });
     if (!$authReady || !$user) return;
     loading = true;
     api
-      .get<JobWithCompany[]>(`/api/me/jobs?include_closed=${closed}`)
+      .get<JobWithCompany[]>(`/api/me/jobs?${params}`)
       .then((d) => (jobs = d))
       .catch(() => (error = 'Impossible de charger les offres.'))
       .finally(() => (loading = false));
@@ -50,10 +57,22 @@
     notification quotidienne.
   </p>
 
-  <label class="check small">
-    <input type="checkbox" bind:checked={includeClosed} />
-    Inclure les offres qui ont disparu du site
-  </label>
+  <div class="controls">
+    <div class="segmented" role="group" aria-label="Tri">
+      <button class:on={sort === 'date'} onclick={() => (sort = 'date')}>Plus recentes</button>
+      <button class:on={sort === 'score'} onclick={() => (sort = 'score')}>Plus pertinentes</button>
+    </div>
+
+    <label class="check small">
+      <input type="checkbox" bind:checked={relevantOnly} />
+      Seulement les pertinentes
+    </label>
+
+    <label class="check small">
+      <input type="checkbox" bind:checked={includeClosed} />
+      Inclure les offres disparues
+    </label>
+  </div>
 
   {#if error}
     <p class="alert alert-error">{error}</p>
@@ -77,11 +96,17 @@
         <ul>
           {#each companyJobs as job}
             <li class:closed={job.closed_at}>
-              <a href={job.url} target="_blank" rel="noopener">{job.title}</a>
-              <span class="meta small muted">
-                {#if job.location}{job.location} · {/if}
-                vue le {date(job.first_seen_at)}
-                {#if job.closed_at}· <em>fermee</em>{/if}
+              <MatchBadge score={job.match_score} reasons={job.match_reasons} />
+              <span class="job">
+                <a href={job.url} target="_blank" rel="noopener">{job.title}</a>
+                <span class="meta small muted">
+                  {#if job.location}{job.location} · {/if}
+                  vue le {date(job.first_seen_at)}
+                  {#if job.closed_at}· <em>fermee</em>{/if}
+                </span>
+                {#if job.match_reasons.length}
+                  <span class="why small muted">{job.match_reasons.slice(0, 2).join(' · ')}</span>
+                {/if}
               </span>
             </li>
           {/each}
@@ -96,15 +121,50 @@
 
   h1 { font-size: 1.6rem; }
 
-  .check { display: flex; align-items: center; gap: 0.45rem; margin: 1.2rem 0; font-weight: 500; }
-  .check input { width: auto; }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.1rem;
+    margin: 1.2rem 0;
+  }
+
+  .check { display: flex; align-items: center; gap: 0.45rem; font-weight: 500; margin: 0; }
+  .check input { width: auto; flex-shrink: 0; }
+
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .segmented button {
+    border: none;
+    background: none;
+    padding: 0.32rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .segmented button.on { background: var(--leaf); color: #fff; }
 
   .total { margin-bottom: 0.8rem; }
 
   .group { padding: 1.1rem 1.3rem; margin-bottom: 0.9rem; }
   .group h2 { font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-  .group ul { margin: 0; padding-left: 1.1rem; }
-  .group li { margin-bottom: 0.55rem; overflow-wrap: anywhere; }
+  .group ul { margin: 0; padding: 0; list-style: none; }
+  .group li {
+    display: flex;
+    gap: 0.55rem;
+    align-items: baseline;
+    margin-bottom: 0.7rem;
+    overflow-wrap: anywhere;
+  }
+  .job { display: flex; flex-direction: column; min-width: 0; }
+  .why { opacity: 0.85; }
   .group li.closed { opacity: 0.55; }
 
   .meta { display: block; }
