@@ -119,6 +119,12 @@
     source?.setData(toGeoJSON(companies));
   });
 
+  /** A appeler quand le conteneur change de taille (bascule carte/liste sur
+   *  mobile): MapLibre ne detecte pas un passage par display:none. */
+  export function resize() {
+    map?.resize();
+  }
+
   /** Centre la carte sur une entreprise, sans dezoomer si on est deja proche. */
   export function focus(company: Company) {
     if (!map || company.lat === null || company.lon === null) return;

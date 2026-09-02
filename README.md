@@ -51,6 +51,17 @@ Le CDN de CARTO, lui, exige desormais une cle.
 **Favoris optimistes.** `toggleSaved` met le store a jour avant l'aller-retour
 reseau et revient en arriere si l'appel echoue : la carte reagit au clic.
 
+**Deux mises en page, pas une grille qui retrecit.** Au-dessus de 900px, trois
+colonnes cote a cote (liste | carte | fiche). En dessous, une seule vue occupe
+l'ecran : la recherche et les filtres restent en haut (`display: contents`
+dissout la sidebar pour que ses controles deviennent une rangee de la grille),
+la carte et la liste se partagent la place via un commutateur flottant, et la
+fiche s'ouvre en plein ecran. A 390px de large, trois panneaux cote a cote sont
+illisibles tous les trois.
+
+La carte reste montee quand elle est masquee : MapLibre ne detecte pas un
+passage par `display:none`, d'ou le `resize()` expose par `Map.svelte`.
+
 ## Verifications
 
 ```bash

@@ -120,4 +120,13 @@
   .icon { font-size: 1.6rem; margin-bottom: 0.6rem; }
 
   footer { padding-bottom: 2.5rem; }
+
+  @media (max-width: 640px) {
+    .hero { padding: 2.6rem 0 2.2rem; }
+    .lead { font-size: 1rem; }
+    /* Les deux CTA sur toute la largeur: plus faciles a viser au pouce */
+    .cta { flex-direction: column; align-items: stretch; }
+    .steps { padding-top: 1.8rem; padding-bottom: 1.8rem; }
+    .step { padding: 1.15rem; }
+  }
 </style>

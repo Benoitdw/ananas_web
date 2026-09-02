@@ -102,9 +102,9 @@
   .total { margin-bottom: 0.8rem; }
 
   .group { padding: 1.1rem 1.3rem; margin-bottom: 0.9rem; }
-  .group h2 { font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .group h2 { font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
   .group ul { margin: 0; padding-left: 1.1rem; }
-  .group li { margin-bottom: 0.55rem; }
+  .group li { margin-bottom: 0.55rem; overflow-wrap: anywhere; }
   .group li.closed { opacity: 0.55; }
 
   .meta { display: block; }
@@ -112,4 +112,10 @@
   .empty { padding: 2.2rem; text-align: center; }
   .empty p { margin: 0 0 0.5rem; }
   .empty .btn { margin-top: 1rem; }
+
+  @media (max-width: 640px) {
+    .page { padding: 1.6rem 1rem 2.5rem; }
+    .group { padding: 1rem; }
+    .empty { padding: 1.6rem 1.1rem; }
+  }
 </style>

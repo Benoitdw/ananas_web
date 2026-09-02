@@ -118,3 +118,21 @@ label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3
 .alert-warn { background: #fdf7e6; border-color: #f0dfa8; color: #7a5c05; }
 
 .container { max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; }
+
+/* ------------------------------------------------------------- responsive */
+
+/* Garde-fou global: rien ne doit pouvoir elargir la page au-dela de l'ecran.
+   Sans ça, un seul mot long (une URL, un email) suffit a creer un
+   defilement horizontal sur toute l'application. */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+/* Les enfants de flex/grid ont min-width:auto par defaut, ce qui les empeche
+   de retrecir sous leur contenu et fait deborder les conteneurs. */
+.container, .card { min-width: 0; }
+
+a, dd, li, p, h1, h2, h3 { overflow-wrap: break-word; }
+
+@media (max-width: 640px) {
+  body { font-size: 14px; }
+  .container { padding: 0 1rem; }
+}

@@ -197,6 +197,10 @@
   h1 { font-size: 1.6rem; margin-bottom: 1.4rem; }
 
   .block { padding: 1.5rem; margin-bottom: 1rem; }
+
+  @media (max-width: 640px) {
+    .block { padding: 1.1rem; }
+  }
   .block h2 { font-size: 1.05rem; }
 
   .how { margin: 1rem 0; }
@@ -209,6 +213,8 @@
     padding: 0.05rem 0.3rem;
     border-radius: 4px;
     font-size: 0.85em;
+    /* L'URL getUpdates est plus longue que l'ecran d'un telephone */
+    overflow-wrap: anywhere;
   }
 
   .field { margin-bottom: 0.9rem; }
@@ -224,12 +230,18 @@
   .check input { width: auto; }
 
   .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .actions .btn { flex: 1 1 auto; }
 
   .danger { color: var(--danger); }
 
   .alert { margin: 1rem 0 0; }
 
-  dl { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.8rem; margin: 0; }
+  dl {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.3rem 0.8rem;
+    margin: 0;
+  }
   dt { color: var(--muted); font-weight: 600; }
   dd { margin: 0; }
 </style>

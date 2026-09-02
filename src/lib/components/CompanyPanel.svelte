@@ -179,6 +179,7 @@
     color: var(--muted);
     cursor: pointer;
     padding: 0 0.2rem;
+    flex-shrink: 0;
   }
   .close:hover { color: var(--text); }
 
@@ -189,10 +190,13 @@
   .baseline { font-size: 0.93rem; margin: 0 0 0.9rem; }
 
   .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
+  .tag { max-width: 100%; overflow-wrap: break-word; }
 
   dl {
     display: grid;
-    grid-template-columns: auto 1fr;
+    /* minmax(0,1fr): sans ça une URL longue elargit la grille et fait
+       deborder tout le panneau. */
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 0.3rem 0.8rem;
     margin: 0 0 1.2rem;
     font-size: 0.88rem;
@@ -202,10 +206,20 @@
 
   .jobs h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
   .jobs ul { margin: 0; padding-left: 1.1rem; }
-  .jobs li { margin-bottom: 0.35rem; font-size: 0.9rem; }
+  .jobs li { margin-bottom: 0.35rem; font-size: 0.9rem; overflow-wrap: anywhere; }
 
   details { margin-top: 1rem; }
   summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 
   .source { margin-top: 1rem; }
+
+  @media (max-width: 900px) {
+    /* Plein ecran: la fiche est la vue principale, pas un panneau lateral.
+       Le bouton de fermeture est agrandi pour rester atteignable au pouce. */
+    .panel { padding: 1rem 1.1rem 2.5rem; }
+    header { position: sticky; top: 0; background: var(--surface); padding-top: 0.2rem; }
+    header h2 { font-size: 1.25rem; }
+    .close { font-size: 2rem; padding: 0 0.5rem; margin-top: -0.2rem; }
+    .save { padding: 0.75rem 1rem; }
+  }
 </style>

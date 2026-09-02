@@ -81,7 +81,15 @@
 <style>
   .wrap { display: flex; justify-content: center; padding: 3.5rem 1.25rem; }
 
+  @media (max-width: 640px) {
+    .wrap { padding: 2rem 1rem; }
+  }
+
   form { width: 100%; max-width: 380px; padding: 1.8rem; }
+
+  @media (max-width: 640px) {
+    form { padding: 1.3rem; }
+  }
 
   h1 { font-size: 1.4rem; }
 

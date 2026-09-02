@@ -1,10 +1,17 @@
 <script lang="ts">
   /**
-   * Ecran principal: sidebar de filtres + carte + fiche entreprise.
+   * Ecran principal: filtres + carte + fiche entreprise.
+   *
+   * Deux dispositions selon la largeur:
+   *  - desktop: trois colonnes cote a cote (liste | carte | fiche);
+   *  - mobile: une seule vue a la fois. La carte et la liste se partagent
+   *    l'ecran via une bascule, les filtres se replient, et la fiche s'ouvre
+   *    en plein ecran. Aucun des trois panneaux n'est utilisable a 390px de
+   *    large s'il doit partager la place.
+   *
    * Le filtrage se fait cote client sur les 81 lignes deja chargees, ce qui
    * rend la recherche instantanee.
    */
-  import { onMount } from 'svelte';
   import Map from '$lib/components/Map.svelte';
   import CompanyPanel from '$lib/components/CompanyPanel.svelte';
   import {
@@ -24,7 +31,14 @@
   let mapRef = $state<Map | null>(null);
   let error = $state('');
 
+  // Etat propre au mobile; ignore par la mise en page desktop.
+  let mobileView = $state<'map' | 'list'>('map');
+  let filtersOpen = $state(false);
+
   const selected = $derived($filtered.find((c) => c.id === selectedId) ?? null);
+  const activeFilters = $derived(
+    Number(!!$filters.type) + Number(!!$filters.core_business) + Number($filters.savedOnly)
+  );
 
   // On (re)charge apres la resolution de la session: la reponse porte
   // `is_saved`, qui depend de l'utilisateur connecte.
@@ -36,10 +50,23 @@
     }
   });
 
+  // La carte reste montee quand elle est masquee: MapLibre ne detecte pas un
+  // passage par display:none, il faut le lui dire au retour.
+  $effect(() => {
+    if (mobileView === 'map') requestAnimationFrame(() => mapRef?.resize());
+  });
+
   function select(id: number) {
     selectedId = id;
     const company = $filtered.find((c) => c.id === id);
     if (company) mapRef?.focus(company);
+  }
+
+  /** Depuis la liste sur mobile: on bascule sur la carte en meme temps que la
+   *  fiche s'ouvre, pour que la fermeture revele le marqueur. */
+  function selectFromList(id: number) {
+    select(id);
+    mobileView = 'map';
   }
 
   async function onToggle(company: Company) {
@@ -57,17 +84,28 @@
 
 <svelte:head><title>Carte des entreprises — Ananas</title></svelte:head>
 
-<div class="layout">
+<div class="layout" class:has-detail={!!selected} class:show-list={mobileView === 'list'}>
   <aside class="sidebar">
-    <div class="filters">
+   <div class="controls">
+    <div class="toolbar">
       <input type="search" placeholder="Rechercher…" bind:value={$filters.q} />
 
-      <select bind:value={$filters.type}>
+      <button
+        class="btn btn-ghost btn-sm filters-toggle"
+        onclick={() => (filtersOpen = !filtersOpen)}
+        aria-expanded={filtersOpen}
+      >
+        Filtres{activeFilters ? ` (${activeFilters})` : ''}
+      </button>
+    </div>
+
+    <div class="filters" class:open={filtersOpen}>
+      <select bind:value={$filters.type} aria-label="Type d'organisation">
         <option value="">Tous les types</option>
         {#each $facets.types as type}<option value={type}>{type}</option>{/each}
       </select>
 
-      <select bind:value={$filters.core_business}>
+      <select bind:value={$filters.core_business} aria-label="Secteur d'activite">
         <option value="">Tous les secteurs</option>
         {#each $facets.core_businesses as sector}<option value={sector}>{sector}</option>{/each}
       </select>
@@ -76,23 +114,24 @@
         <input type="checkbox" bind:checked={$filters.savedOnly} />
         Seulement mes entreprises enregistrees
       </label>
+    </div>
 
-      <div class="count small muted">
-        {#if $loading}
-          Chargement…
-        {:else}
+    <div class="count small muted">
+      {#if $loading}
+        Chargement…
+      {:else}
+        <span>
           {$filtered.length} entreprise{$filtered.length > 1 ? 's' : ''}
-          {#if $unlocated.length}
-            · {$unlocated.length} sans position
-          {/if}
-          <button class="link" onclick={reset}>reinitialiser</button>
-        {/if}
-      </div>
+          {#if $unlocated.length}· {$unlocated.length} sans position{/if}
+        </span>
+        <button class="link" onclick={reset}>reinitialiser</button>
+      {/if}
     </div>
 
     {#if error}
       <p class="alert alert-error small">{error}</p>
     {/if}
+   </div>
 
     <ul class="list">
       {#each $filtered as company (company.id)}
@@ -101,7 +140,7 @@
             class="row"
             class:active={company.id === selectedId}
             class:unlocated={company.lat === null}
-            onclick={() => select(company.id)}
+            onclick={() => selectFromList(company.id)}
           >
             <span class="dot" class:saved={company.is_saved}></span>
             <span class="text">
@@ -126,31 +165,49 @@
       <CompanyPanel company={selected} onclose={() => (selectedId = null)} ontoggle={onToggle} />
     </div>
   {/if}
+
+  <!-- Bascule carte/liste: n'existe qu'en dessous de 900px -->
+  <div class="switcher" role="group" aria-label="Affichage">
+    <button class:on={mobileView === 'map'} onclick={() => (mobileView = 'map')}>Carte</button>
+    <button class:on={mobileView === 'list'} onclick={() => (mobileView = 'list')}>
+      Liste <span class="n">{$filtered.length}</span>
+    </button>
+  </div>
 </div>
 
 <style>
   .layout {
     display: grid;
-    grid-template-columns: 310px 1fr;
+    grid-template-columns: 310px minmax(0, 1fr);
     height: calc(100vh - 56px);
   }
 
-  .layout:has(.detail) { grid-template-columns: 310px 1fr 340px; }
+  .layout.has-detail { grid-template-columns: 310px minmax(0, 1fr) 340px; }
 
   .sidebar {
     border-right: 1px solid var(--border);
     background: var(--surface);
     display: flex;
     flex-direction: column;
+    min-width: 0;
     min-height: 0;
   }
 
+  .toolbar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.9rem 0.9rem 0.55rem;
+  }
+  .toolbar input { min-width: 0; }
+
+  /* Sur desktop les filtres sont toujours visibles: le bouton n'a pas lieu d'etre */
+  .filters-toggle { display: none; white-space: nowrap; }
+
   .filters {
-    padding: 0.9rem;
-    border-bottom: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
+    padding: 0 0.9rem 0.55rem;
   }
 
   .check {
@@ -161,9 +218,21 @@
     font-size: 0.87rem;
     margin: 0;
   }
-  .check input { width: auto; }
+  .check input { width: auto; flex-shrink: 0; }
 
-  .count { display: flex; align-items: center; gap: 0.4rem; }
+  .controls {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .count {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0 0.9rem 0.7rem;
+  }
 
   .link {
     border: none;
@@ -173,10 +242,10 @@
     cursor: pointer;
     text-decoration: underline;
     font-size: inherit;
-    margin-left: auto;
+    white-space: nowrap;
   }
 
-  .list { list-style: none; margin: 0; padding: 0.35rem; overflow-y: auto; flex: 1; }
+  .list { list-style: none; margin: 0; padding: 0.35rem; overflow-y: auto; flex: 1; min-height: 0; }
 
   .row {
     display: flex;
@@ -220,15 +289,96 @@
     font-weight: 700;
     padding: 0.05rem 0.4rem;
     border-radius: 999px;
+    flex-shrink: 0;
   }
 
   .map-area { min-width: 0; }
 
-  .detail { border-left: 1px solid var(--border); min-height: 0; background: var(--surface); }
+  .detail {
+    border-left: 1px solid var(--border);
+    min-height: 0;
+    background: var(--surface);
+  }
+
+  .switcher { display: none; }
+
+  /* --------------------------------------------------------------- mobile */
 
   @media (max-width: 900px) {
-    .layout, .layout:has(.detail) { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-    .sidebar { max-height: 40vh; }
-    .detail { position: fixed; inset: 56px 0 0 auto; width: min(360px, 100%); z-index: 15; }
+    /* Une seule vue occupe l'ecran: a cette largeur, deux panneaux cote a cote
+       sont illisibles tous les deux. */
+    .layout, .layout.has-detail {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      position: relative;
+    }
+
+    /* display:contents dissout la sidebar: ses deux blocs deviennent des
+       elements de grille a part entiere. Les controles occupent la premiere
+       rangee et restent visibles quelle que soit la vue — sans ça, on ne
+       pourrait pas filtrer ce que la carte affiche. */
+    .sidebar { display: contents; }
+    .controls { grid-area: 1 / 1; border-right: none; }
+
+    .list, .map-area { grid-area: 2 / 1; min-height: 0; }
+    .list {
+      display: none;
+      background: var(--surface);
+      z-index: 5;
+      /* Les dernieres entreprises doivent pouvoir defiler au-dessus du
+         commutateur flottant, sinon elles sont inatteignables. */
+      padding-bottom: 4.5rem;
+    }
+    .layout.show-list .list { display: block; }
+
+    .filters { display: none; }
+    .filters.open { display: flex; }
+    .filters-toggle { display: inline-flex; }
+
+    /* La fiche passe en plein ecran: sur 390px, un panneau lateral de 340px
+       ne laisse rien voir de la carte derriere. */
+    .detail {
+      position: fixed;
+      inset: 56px 0 0 0;
+      z-index: 25;
+      border-left: none;
+    }
+
+    .switcher {
+      display: flex;
+      position: absolute;
+      /* Assez haut pour ne pas recouvrir l'attribution OpenStreetMap,
+         qui doit rester lisible. */
+      bottom: 1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .switcher button {
+      border: none;
+      background: none;
+      padding: 0.5rem 1.05rem;
+      font-weight: 600;
+      font-size: 0.87rem;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .switcher button.on { background: var(--leaf); color: #fff; }
+    .switcher .n { opacity: 0.75; font-weight: 500; }
+
+    /* Le commutateur est ancre a la carte, il ne doit pas flotter sur la fiche */
+    .layout.has-detail .switcher { display: none; }
+  }
+
+  @media (max-width: 360px) {
+    .switcher button { padding: 0.5rem 0.85rem; font-size: 0.82rem; }
+    /* Le compteur fait deborder le bouton sur les tres petits ecrans */
+    .switcher .n { display: none; }
   }
 </style>
