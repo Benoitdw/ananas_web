@@ -15,6 +15,9 @@ export type Company = {
   lon: number | null;
   geo_precision: string;
   is_saved: boolean;
+  /** Masquee par l'utilisateur: hors carte, hors feed d'offres et hors
+   *  notification. Plus fort que "pas en favori" — voir includeHidden. */
+  is_hidden: boolean;
   has_scraper: boolean;
   open_jobs: number;
   /** Distance a vol d'oiseau depuis le domicile, en km. null quand le domicile

@@ -12,8 +12,9 @@
     company: Company;
     onclose: () => void;
     ontoggle: (c: Company) => void;
+    onhide: (c: Company) => void;
   };
-  let { company, onclose, ontoggle }: Props = $props();
+  let { company, onclose, ontoggle, onhide }: Props = $props();
 
   let detail = $state<CompanyDetail | null>(null);
   let error = $state('');
@@ -77,12 +78,29 @@
   {/if}
 
   {#if $user}
-    <button
-      class="btn save {company.is_saved ? 'btn-saved' : ''}"
-      onclick={() => ontoggle(company)}
-    >
-      {company.is_saved ? '★ Enregistree — retirer' : '☆ Enregistrer cette entreprise'}
-    </button>
+    {#if company.is_hidden}
+      <p class="alert alert-warn small">
+        Entreprise masquee: elle n’apparait plus sur la carte, ses offres sont hors
+        de ton feed et tu ne recevras aucune notification la concernant.
+      </p>
+      <button class="btn save" onclick={() => onhide(company)}>
+        ↺ Reafficher cette entreprise
+      </button>
+    {:else}
+      <button
+        class="btn save {company.is_saved ? 'btn-saved' : ''}"
+        onclick={() => ontoggle(company)}
+      >
+        {company.is_saved ? '★ Enregistree — retirer' : '☆ Enregistrer cette entreprise'}
+      </button>
+      <button
+        class="btn btn-ghost btn-sm hide"
+        onclick={() => onhide(company)}
+        title="Ne plus rien recevoir de cette entreprise"
+      >
+        🚫 Masquer cette entreprise
+      </button>
+    {/if}
   {:else}
     <p class="alert alert-ok small">
       <a href="/register">Cree un compte</a> pour enregistrer cette entreprise et suivre ses offres.
@@ -203,6 +221,11 @@
 </aside>
 
 <style>
+  .hide {
+    width: 100%;
+    margin-top: 0.4rem;
+  }
+
   .panel {
     padding: 1.15rem;
     overflow-y: auto;

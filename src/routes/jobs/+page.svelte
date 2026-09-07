@@ -177,6 +177,34 @@
     }
   }
 
+  /** Coupe une entreprise entierement, depuis la ligne d'une de ses offres.
+   *
+   *  Bien plus fort que le ✕ voisin, qui n'ecarte qu'une offre: ici toutes les
+   *  lignes de cette entreprise disparaissent et plus aucune notification ne
+   *  partira. D'ou la confirmation — et le fait qu'on se demasque ailleurs,
+   *  depuis la fiche sur la carte, ce que le message dit explicitement.
+   */
+  async function muteCompany(companyId: number, companyName: string) {
+    const ok = confirm(
+      `Masquer ${companyName} ?\n\n` +
+        'Ses offres quittent cette page et tu ne recevras plus aucune ' +
+        'notification la concernant. Reversible depuis sa fiche, sur la carte.'
+    );
+    if (!ok) return;
+
+    pending = new Set([...pending, companyId]);
+    const removed = jobs.filter((j) => j.company_id === companyId);
+    jobs = jobs.filter((j) => j.company_id !== companyId);
+    try {
+      await api.put(`/api/me/companies/${companyId}/hidden`);
+    } catch (err) {
+      jobs = [...jobs, ...removed];
+      error = err instanceof ApiError ? err.message : 'L’entreprise n’a pas pu etre masquee.';
+    } finally {
+      pending = new Set([...pending].filter((id) => id !== companyId));
+    }
+  }
+
   /** Ecarte ou reaffiche une offre. Quand les offres masquees ne sont pas
    *  affichees, la masquer la retire simplement de la liste. */
   async function toggleHidden(job: JobWithCompany) {
@@ -359,6 +387,15 @@
                       ★
                     </button>
                   {/if}
+                  <button
+                    class="mute"
+                    title="Ne plus rien recevoir de {job.company_name}"
+                    aria-label="Masquer {job.company_name}"
+                    disabled={pending.has(job.company_id)}
+                    onclick={() => muteCompany(job.company_id, job.company_name)}
+                  >
+                    🚫
+                  </button>
                 </td>
                 <td>{job.location ?? '—'}</td>
                 {#if located}
@@ -528,6 +565,28 @@
   .star:hover { color: var(--brand-dark); }
   .star.on { color: var(--saved); }
   .star:disabled { opacity: 0.5; cursor: default; }
+
+  /* Action destructrice: discrete au repos, elle ne se revele qu'au survol de
+     la ligne pour ne pas concurrencer l'etoile du regard. */
+  .mute {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  tr:hover .mute,
+  .mute:focus-visible { opacity: 0.75; }
+  .mute:hover { opacity: 1; }
+  .mute:disabled { opacity: 0.4; cursor: default; }
+
+  /* Sans survol (tactile), l'action doit rester atteignable. */
+  @media (hover: none) {
+    .mute { opacity: 0.65; }
+  }
 
   td.act { text-align: right; white-space: nowrap; }
   .dismiss { padding: 0.25rem 0.5rem; }

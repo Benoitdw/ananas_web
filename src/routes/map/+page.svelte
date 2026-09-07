@@ -15,6 +15,7 @@
   import Map from '$lib/components/Map.svelte';
   import CompanyPanel from '$lib/components/CompanyPanel.svelte';
   import {
+    companies,
     EMPTY_FILTERS,
     facets,
     filtered,
@@ -22,6 +23,7 @@
     loadCompanies,
     loading,
     mappable,
+    toggleHidden,
     toggleSaved,
     unlocated
   } from '$lib/stores/companies';
@@ -30,6 +32,10 @@
   import { SOURCE_LABELS } from '$lib/sources';
   import { page } from '$app/state';
   import type { Company } from '$lib/types';
+
+  // La case n'apparait que si l'utilisateur a effectivement masque quelque
+  // chose: un filtre toujours vide n'aiderait personne.
+  const hidden = $derived($companies.filter((c) => c.is_hidden).length);
 
   let selectedId = $state<number | null>(null);
   let mapRef = $state<Map | null>(null);
@@ -114,6 +120,20 @@
     }
   }
 
+  async function onHide(company: Company) {
+    const wasHidden = company.is_hidden;
+    try {
+      await toggleHidden(company);
+      // Masquer sort l'entreprise de la carte: garder sa fiche ouverte
+      // laisserait un panneau sur une epingle qui n'existe plus. On la garde
+      // en revanche a l'ecran quand on demasque, ou quand la case "afficher
+      // les masquees" est cochee — la il n'y a rien d'incoherent.
+      if (!wasHidden && !$filters.includeHidden) selectedId = null;
+    } catch {
+      error = 'Connecte-toi pour masquer une entreprise.';
+    }
+  }
+
   function reset() {
     $filters = { ...EMPTY_FILTERS };
   }
@@ -164,6 +184,13 @@
         <input type="checkbox" bind:checked={$filters.savedOnly} />
         Seulement mes entreprises enregistrees
       </label>
+
+      {#if hidden > 0}
+        <label class="check">
+          <input type="checkbox" bind:checked={$filters.includeHidden} />
+          Afficher les {hidden} entreprise{hidden > 1 ? 's' : ''} masquee{hidden > 1 ? 's' : ''}
+        </label>
+      {/if}
 
       {#if located}
         <div class="radius">
@@ -266,7 +293,12 @@
 
   {#if selected}
     <div class="detail">
-      <CompanyPanel company={selected} onclose={() => (selectedId = null)} ontoggle={onToggle} />
+      <CompanyPanel
+        company={selected}
+        onclose={() => (selectedId = null)}
+        ontoggle={onToggle}
+        onhide={onHide}
+      />
     </div>
   {/if}
 
