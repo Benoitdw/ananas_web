@@ -143,6 +143,17 @@ export type ProfileData = {
   summary: string;
 };
 
+/** Correction manuelle du profil structure. Envoyee en PATCH: le serveur ne
+ *  touche qu'aux cles presentes, renormalise les termes dans le vocabulaire de
+ *  l'extraction, et rescore toutes les offres dans la foulee. */
+export type ProfileDataUpdate = Partial<Omit<ProfileData, 'summary'>>;
+
+/** Echelles fermees, partagees avec l'extraction des offres — c'est ce que
+ *  `ananas.ai.matching` sait comparer. Toute autre valeur est refusee par le
+ *  serveur. */
+export const SENIORITY = ['stage', 'junior', 'confirme', 'senior', 'lead', 'direction', 'inconnu'];
+export const REMOTE = ['sur_site', 'hybride', 'distanciel', 'inconnu'];
+
 export type CvImport = {
   text: string;
   pages: number;
