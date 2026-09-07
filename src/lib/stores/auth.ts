@@ -6,6 +6,7 @@
  */
 import { writable } from 'svelte/store';
 import { api, ApiError } from '$lib/api';
+import { forgetHome } from '$lib/stores/home';
 import type { User } from '$lib/types';
 
 export const user = writable<User | null>(null);
@@ -29,17 +30,22 @@ export async function refreshUser(): Promise<User | null> {
 
 export async function login(email: string, password: string): Promise<User> {
   const me = await api.post<User>('/api/auth/login', { email, password });
+  // Le domicile est propre a chaque compte: le cache de la session precedente
+  // ferait afficher le cercle de quelqu'un d'autre.
+  forgetHome();
   user.set(me);
   return me;
 }
 
 export async function register(email: string, password: string): Promise<User> {
   const me = await api.post<User>('/api/auth/register', { email, password });
+  forgetHome();
   user.set(me);
   return me;
 }
 
 export async function logout(): Promise<void> {
   await api.post('/api/auth/logout');
+  forgetHome();
   user.set(null);
 }

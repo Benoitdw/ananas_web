@@ -8,24 +8,35 @@
    *
    * Les entreprises sont une source GeoJSON unique avec deux couches, pour que
    * les favoris passent devant et en orange sans dupliquer les donnees.
+   *
+   * Le domicile ajoute une seconde source: un disque de `radiusKm` autour du
+   * point de reference. C'est ce qui rend une distance lisible — « 30 km »
+   * ne veut rien dire tant qu'on ne voit pas ce que ça couvre sur la carte.
    */
   import { onMount } from 'svelte';
   import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
-  import type { Company } from '$lib/types';
+  import type { Company, Home } from '$lib/types';
 
   type Props = {
     companies: Company[];
     selectedId: number | null;
     onselect: (id: number) => void;
+    /** Domicile localise, ou null: pas de cercle, pas de point. */
+    home?: Home | null;
+    /** Rayon affiche, en km. Suit le curseur de la sidebar, pas la valeur
+     *  enregistree: on doit pouvoir regarder « et a 60 km ? » sans rien changer
+     *  a ses reglages. */
+    radiusKm?: number | null;
   };
-  let { companies, selectedId, onselect }: Props = $props();
+  let { companies, selectedId, onselect, home = null, radiusKm = null }: Props = $props();
 
   let container: HTMLDivElement;
   let map: MapLibreMap | null = $state(null);
   let ready = $state(false);
 
   const SOURCE = 'companies';
+  const HOME_SOURCE = 'home';
   // Cadrage du POC: la Belgique entiere
   const CENTER: [number, number] = [4.66, 50.64];
   const ZOOM = 7.2;
@@ -51,6 +62,61 @@
       lon + (SPREAD_M * Math.sin(angle)) / (M_PER_DEG * Math.cos((lat * Math.PI) / 180)),
       lat + (SPREAD_M * Math.cos(angle)) / M_PER_DEG
     ];
+  }
+
+  /** Point situe a `km` de (lat, lon) dans la direction `bearing`.
+   *
+   *  Formule spherique complete, pas une conversion degres/metres a plat: a
+   *  100 km un cercle "plat" est visiblement ovale aux latitudes belges, et
+   *  c'est precisement le rayon que l'utilisateur regarde. */
+  function destination(lat: number, lon: number, km: number, bearing: number): [number, number] {
+    const R = 6371.0088;
+    const d = km / R;
+    const phi1 = (lat * Math.PI) / 180;
+    const lambda1 = (lon * Math.PI) / 180;
+    const phi2 = Math.asin(
+      Math.sin(phi1) * Math.cos(d) + Math.cos(phi1) * Math.sin(d) * Math.cos(bearing)
+    );
+    const lambda2 =
+      lambda1 +
+      Math.atan2(
+        Math.sin(bearing) * Math.sin(d) * Math.cos(phi1),
+        Math.cos(d) - Math.sin(phi1) * Math.sin(phi2)
+      );
+    return [(lambda2 * 180) / Math.PI, (phi2 * 180) / Math.PI];
+  }
+
+  // 128 segments: le bord reste lisse au zoom ou le cercle remplit l'ecran,
+  // sans que la source pese quoi que ce soit.
+  const CIRCLE_STEPS = 128;
+
+  /** Le disque du perimetre, plus le point du domicile. Une seule source pour
+   *  les deux: ils apparaissent et disparaissent ensemble. */
+  function homeGeoJSON() {
+    const features: GeoJSON.Feature[] = [];
+
+    if (home && home.lat !== null && home.lon !== null) {
+      const { lat, lon } = home;
+
+      if (radiusKm) {
+        const ring = Array.from({ length: CIRCLE_STEPS + 1 }, (_, i) =>
+          destination(lat, lon, radiusKm, (i * 2 * Math.PI) / CIRCLE_STEPS)
+        );
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: [ring] },
+          properties: { kind: 'radius' }
+        });
+      }
+
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lon, lat] },
+        properties: { kind: 'home' }
+      });
+    }
+
+    return { type: 'FeatureCollection' as const, features };
   }
 
   function toGeoJSON(list: Company[]) {
@@ -99,6 +165,45 @@
 
     map.on('load', () => {
       if (!map) return;
+
+      // Le perimetre d'abord: il doit rester sous les marqueurs, sinon son
+      // remplissage delave les entreprises qu'il sert justement a montrer.
+      map.addSource(HOME_SOURCE, { type: 'geojson', data: homeGeoJSON() });
+
+      map.addLayer({
+        id: 'home-radius-fill',
+        type: 'fill',
+        source: HOME_SOURCE,
+        filter: ['==', ['get', 'kind'], 'radius'],
+        paint: { 'fill-color': '#2a9d8f', 'fill-opacity': 0.08 }
+      });
+
+      map.addLayer({
+        id: 'home-radius-line',
+        type: 'line',
+        source: HOME_SOURCE,
+        filter: ['==', ['get', 'kind'], 'radius'],
+        paint: {
+          'line-color': '#2a9d8f',
+          'line-width': 1.6,
+          'line-opacity': 0.75,
+          'line-dasharray': [3, 2]
+        }
+      });
+
+      // Le domicile: un point sombre, distinct des deux teintes d'entreprise
+      map.addLayer({
+        id: 'home-point',
+        type: 'circle',
+        source: HOME_SOURCE,
+        filter: ['==', ['get', 'kind'], 'home'],
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#264653',
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#ffffff'
+        }
+      });
 
       map.addSource(SOURCE, { type: 'geojson', data: toGeoJSON(companies) });
 
@@ -154,10 +259,41 @@
     source?.setData(toGeoJSON(companies));
   });
 
+  // Le cercle suit le curseur de rayon en direct: c'est ce qui fait de la
+  // distance quelque chose qu'on regarde plutot qu'un nombre a imaginer.
+  $effect(() => {
+    // Lectures explicites: sans elles, l'effet ne se redeclenche pas quand
+    // seul le rayon change.
+    void home?.lat;
+    void home?.lon;
+    void radiusKm;
+    if (!ready || !map) return;
+    const source = map.getSource(HOME_SOURCE) as maplibregl.GeoJSONSource | undefined;
+    source?.setData(homeGeoJSON());
+  });
+
   /** A appeler quand le conteneur change de taille (bascule carte/liste sur
    *  mobile): MapLibre ne detecte pas un passage par display:none. */
   export function resize() {
     map?.resize();
+  }
+
+  /** Cadre la carte sur le perimetre entier. Appele quand l'utilisateur vient
+   *  de definir son domicile: sans ça, le cercle peut naitre hors champ. */
+  export function fitRadius() {
+    if (!map || !home || home.lat === null || home.lon === null) return;
+    const km = radiusKm || home.radius_km;
+    const [east] = destination(home.lat, home.lon, km, Math.PI / 2);
+    const [, north] = destination(home.lat, home.lon, km, 0);
+    const [west] = destination(home.lat, home.lon, km, -Math.PI / 2);
+    const [, south] = destination(home.lat, home.lon, km, Math.PI);
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north]
+      ],
+      { padding: 40, duration: 700 }
+    );
   }
 
   /** Centre la carte sur une entreprise, sans dezoomer si on est deja proche. */

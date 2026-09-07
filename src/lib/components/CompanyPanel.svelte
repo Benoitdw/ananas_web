@@ -4,6 +4,7 @@
   import type { Company, CompanyDetail } from '$lib/types';
   import { user } from '$lib/stores/auth';
   import { companyTags } from '$lib/stores/companies';
+  import { formatKm, home } from '$lib/stores/home';
   import MatchBadge from '$lib/components/MatchBadge.svelte';
 
   type Props = {
@@ -106,6 +107,13 @@
       {#if detail.address}
         <dt>Adresse</dt>
         <dd>{detail.address}</dd>
+      {/if}
+      {#if detail.distance_km !== null}
+        <dt>Distance</dt>
+        <dd>
+          {formatKm(detail.distance_km)} de {$home?.city || 'chez toi'}
+          <span class="small muted">a vol d'oiseau</span>
+        </dd>
       {/if}
       {#if detail.website}
         <dt>Site</dt>

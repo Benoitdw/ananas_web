@@ -10,7 +10,9 @@
   import { api, ApiError } from '$lib/api';
   import TelegramLink from '$lib/components/TelegramLink.svelte';
   import ProfileForm from '$lib/components/ProfileForm.svelte';
+  import HomeForm from '$lib/components/HomeForm.svelte';
   import { authReady, user } from '$lib/stores/auth';
+  import { home, loadHome } from '$lib/stores/home';
   import type { Channel, ChannelType, Profile } from '$lib/types';
 
   let channels = $state<Channel[]>([]);
@@ -35,7 +37,8 @@
     Promise.all([
       api.get<Channel[]>('/api/me/channels'),
       api.get<ChannelType[]>('/api/me/channels/types'),
-      api.get<Profile>('/api/me/profile')
+      api.get<Profile>('/api/me/profile'),
+      loadHome(true)
     ])
       .then(([c, t, p]) => {
         channels = c;
@@ -187,6 +190,19 @@
           </p>
         </section>
       {/if}
+    {/if}
+
+    {#if $home}
+      <section class="card block" id="domicile">
+        <h2>Mon domicile</h2>
+        <p class="muted small">
+          Sert de point de reference pour mesurer la distance des entreprises et des offres. Rien
+          n'est obligatoire : une ville seule suffit a placer un cercle utile. L'adresse ne sert
+          qu'a ce calcul et n'est jamais transmise a une entreprise.
+        </p>
+
+        <HomeForm home={$home} />
+      </section>
     {/if}
 
     <section class="card block">

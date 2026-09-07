@@ -6,6 +6,7 @@
   import { api, ApiError } from '$lib/api';
   import MatchBadge from '$lib/components/MatchBadge.svelte';
   import { authReady, user } from '$lib/stores/auth';
+  import { formatKm, home, isLocated, loadHome } from '$lib/stores/home';
   import type { JobWithCompany } from '$lib/types';
 
   let jobs = $state<JobWithCompany[]>([]);
@@ -24,12 +25,27 @@
   let q = $state('');
   let companyFilter = $state('');
   let locationFilter = $state('');
-  type SortKey = 'score' | 'title' | 'company' | 'location' | 'date';
+  // Perimetre: null = pas de limite. Mesure au siege de l'entreprise, ce que
+  // la colonne dit explicitement — le lieu d'une offre est un texte libre non
+  // geocode.
+  let maxKm = $state<number | null>(null);
+  let radiusDraft = $state(25);
+  type SortKey = 'score' | 'title' | 'company' | 'location' | 'distance' | 'date';
   let sortKey = $state<SortKey>('date');
   let sortDir = $state<'asc' | 'desc'>('desc');
 
+  // La colonne distance n'a de sens qu'avec un domicile localise
+  const located = $derived(isLocated($home));
+  $effect(() => {
+    if (maxKm === null && $home) radiusDraft = $home.radius_km;
+  });
+
   $effect(() => {
     if ($authReady && !$user) goto('/login');
+  });
+
+  $effect(() => {
+    if ($authReady && $user) loadHome();
   });
 
   $effect(() => {
@@ -88,6 +104,16 @@
         if (!y) return -1;
         return x.localeCompare(y, 'fr') * dir;
       }
+      case 'distance': {
+        const x = a.distance_km,
+          y = b.distance_km;
+        if (x === null && y === null) return 0;
+        // Une entreprise non localisee n'est pas "a 0 km": elle ferme la
+        // marche dans les deux sens de tri.
+        if (x === null) return 1;
+        if (y === null) return -1;
+        return (x - y) * dir;
+      }
       case 'date':
         return (a.first_seen_at < b.first_seen_at ? -1 : a.first_seen_at > b.first_seen_at ? 1 : 0) * dir;
     }
@@ -99,6 +125,7 @@
       .filter((j) => {
         if (companyFilter && j.company_name !== companyFilter) return false;
         if (locationFilter && j.location !== locationFilter) return false;
+        if (maxKm !== null && (j.distance_km === null || j.distance_km > maxKm)) return false;
         if (needle) {
           const hay = `${j.title} ${j.company_name} ${j.location ?? ''}`.toLowerCase();
           if (!hay.includes(needle)) return false;
@@ -108,7 +135,7 @@
       .sort(compare);
   });
 
-  const hasFilters = $derived(!!q || !!companyFilter || !!locationFilter);
+  const hasFilters = $derived(!!q || !!companyFilter || !!locationFilter || maxKm !== null);
 
   function sortBy(key: SortKey) {
     if (sortKey === key) {
@@ -116,8 +143,11 @@
     } else {
       sortKey = key;
       // Defaut sensé par colonne: score et date les plus élevés d'abord,
-      // texte de A à Z.
-      sortDir = key === 'title' || key === 'company' || key === 'location' ? 'asc' : 'desc';
+      // texte de A à Z, distance de la plus proche a la plus lointaine.
+      sortDir =
+        key === 'title' || key === 'company' || key === 'location' || key === 'distance'
+          ? 'asc'
+          : 'desc';
     }
   }
 
@@ -125,6 +155,7 @@
     q = '';
     companyFilter = '';
     locationFilter = '';
+    maxKm = null;
   }
 
   const arrow = (key: SortKey) => (sortKey !== key ? '' : sortDir === 'asc' ? ' ▲' : ' ▼');
@@ -218,6 +249,29 @@
       {#each locations as l}<option value={l}>{l}</option>{/each}
     </select>
 
+    {#if located}
+      <label class="radius small">
+        <input
+          type="checkbox"
+          checked={maxKm !== null}
+          onchange={(e) => (maxKm = e.currentTarget.checked ? radiusDraft : null)}
+        />
+        <span>a moins de <strong>{radiusDraft} km</strong></span>
+        <input
+          class="slider"
+          type="range"
+          min="1"
+          max="150"
+          step="1"
+          aria-label="Rayon en kilometres"
+          bind:value={radiusDraft}
+          oninput={() => {
+            if (maxKm !== null) maxKm = radiusDraft;
+          }}
+        />
+      </label>
+    {/if}
+
     {#if hasFilters}
       <button class="link" onclick={resetFilters}>reinitialiser</button>
     {/if}
@@ -259,6 +313,13 @@
               <th><button onclick={() => sortBy('title')}>Offre{arrow('title')}</button></th>
               <th><button onclick={() => sortBy('company')}>Entreprise{arrow('company')}</button></th>
               <th><button onclick={() => sortBy('location')}>Lieu{arrow('location')}</button></th>
+              {#if located}
+                <th class="num">
+                  <button onclick={() => sortBy('distance')} title="Distance du siege de l'entreprise a ton domicile, a vol d'oiseau">
+                    Distance{arrow('distance')}
+                  </button>
+                </th>
+              {/if}
               <th><button onclick={() => sortBy('date')}>Vue le{arrow('date')}</button></th>
               <th class="act"><span class="sr-only">Actions</span></th>
             </tr>
@@ -300,6 +361,9 @@
                   {/if}
                 </td>
                 <td>{job.location ?? '—'}</td>
+                {#if located}
+                  <td class="num dist">{formatKm(job.distance_km)}</td>
+                {/if}
                 <td class="date">{date(job.first_seen_at)}</td>
                 <td class="act">
                   <button
@@ -339,6 +403,25 @@
 
   .check { display: flex; align-items: center; gap: 0.45rem; font-weight: 500; margin: 0; }
   .check input { width: auto; flex-shrink: 0; }
+
+  .radius {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-weight: 500;
+  }
+  .radius input[type='checkbox'] { width: auto; flex-shrink: 0; }
+  /* Le libelle change de largeur avec le nombre: le figer evite que le
+     curseur saute d'un pixel a chaque cran. */
+  .radius span { white-space: nowrap; min-width: 8.5rem; }
+  .slider { width: 7rem; accent-color: var(--leaf); }
+
+  .dist { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
   .segmented {
     display: flex;

@@ -17,6 +17,10 @@ export type Company = {
   is_saved: boolean;
   has_scraper: boolean;
   open_jobs: number;
+  /** Distance a vol d'oiseau depuis le domicile, en km. null quand le domicile
+   *  n'est pas renseigne ou que l'entreprise n'a pas de coordonnees — un tiret
+   *  a l'affichage, jamais un zero invente. */
+  distance_km: number | null;
 };
 
 export type Job = {
@@ -45,6 +49,9 @@ export type JobWithCompany = Job & {
   /** L'utilisateur a explicitement ecarte cette offre. Absente du feed par
    *  defaut — voir includeHidden sur /jobs. */
   is_hidden: boolean;
+  /** Distance du siege de l'entreprise au domicile. Approximation assumee: le
+   *  lieu de l'offre est un texte libre non geocode. */
+  distance_km: number | null;
 };
 
 export type CompanyDetail = Company & {
@@ -156,6 +163,35 @@ export type Profile = {
   data: ProfileData | null;
   ai_available: boolean;
 };
+
+/** Domicile de reference et perimetre de recherche.
+ *
+ *  `lat`/`lon` sont geocodes par le serveur a l'enregistrement: ils tracent le
+ *  cercle sur la carte et servent au calcul des distances. Ils restent nuls
+ *  quand l'adresse n'a pas pu etre localisee — l'interface le dit plutot que
+ *  de poser un cercle au hasard. */
+export type Home = {
+  street: string;
+  postal_code: string;
+  city: string;
+  country: string;
+  address: string;
+  lat: number | null;
+  lon: number | null;
+  geo_precision: string;
+  radius_km: number;
+  /** Appliquer le rayon a la notification quotidienne, et pas seulement aux
+   *  filtres de l'interface. Faux par defaut: un filtre d'envoi retire des
+   *  offres qu'on ne verra jamais, ça se decide explicitement. */
+  notify_within_radius: boolean;
+  updated_at: string | null;
+};
+
+/** Ce que le formulaire envoie en PUT. */
+export type HomeInput = Pick<
+  Home,
+  'street' | 'postal_code' | 'city' | 'country' | 'radius_km' | 'notify_within_radius'
+>;
 
 export type Facets = { types: string[]; tags: string[]; core_businesses: string[] };
 

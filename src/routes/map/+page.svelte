@@ -15,6 +15,7 @@
   import Map from '$lib/components/Map.svelte';
   import CompanyPanel from '$lib/components/CompanyPanel.svelte';
   import {
+    EMPTY_FILTERS,
     facets,
     filtered,
     filters,
@@ -24,6 +25,7 @@
     toggleSaved,
     unlocated
   } from '$lib/stores/companies';
+  import { formatKm, home, isLocated, loadHome } from '$lib/stores/home';
   import { authReady, user } from '$lib/stores/auth';
   import { SOURCE_LABELS } from '$lib/sources';
   import { page } from '$app/state';
@@ -42,8 +44,23 @@
     Number(!!$filters.type) +
       Number(!!$filters.tag) +
       Number(!!$filters.source) +
-      Number($filters.savedOnly)
+      Number($filters.savedOnly) +
+      Number($filters.maxKm !== null)
   );
+
+  // Le perimetre n'existe que si le domicile a pu etre place: sans point de
+  // depart, un rayon ne veut rien dire.
+  const located = $derived(isLocated($home));
+  // Rayon montre par la carte: celui du filtre quand il est actif, sinon celui
+  // qu'on a enregistre — le cercle reste visible meme filtre eteint, c'est lui
+  // qui donne l'echelle des distances affichees dans la liste.
+  const shownRadius = $derived($filters.maxKm ?? $home?.radius_km ?? null);
+  // Position du curseur quand le filtre est eteint: il doit s'allumer sur la
+  // valeur qu'on regarde deja, pas repartir de zero.
+  let radiusDraft = $state(25);
+  $effect(() => {
+    if ($filters.maxKm === null && $home) radiusDraft = $home.radius_km;
+  });
 
   // On (re)charge apres la resolution de la session: la reponse porte
   // `is_saved`, qui depend de l'utilisateur connecte.
@@ -51,7 +68,11 @@
   $effect(() => {
     if ($authReady && !loadedFor) {
       loadedFor = true;
-      loadCompanies().catch(() => (error = 'Impossible de charger les entreprises.'));
+      // Le domicile d'abord: les distances viennent avec la liste, et les
+      // charger en parallele evite un second rendu de toute la sidebar.
+      loadHome(true)
+        .then(() => loadCompanies())
+        .catch(() => (error = 'Impossible de charger les entreprises.'));
     }
   });
 
@@ -94,7 +115,13 @@
   }
 
   function reset() {
-    $filters = { q: '', type: '', tag: '', source: '', savedOnly: false };
+    $filters = { ...EMPTY_FILTERS };
+  }
+
+  /** Allume ou eteint le perimetre. Eteint, le cercle reste dessine: on veut
+   *  continuer a voir ce que « 30 km » represente. */
+  function toggleRadius(on: boolean) {
+    $filters.maxKm = on ? radiusDraft : null;
   }
 </script>
 
@@ -137,6 +164,44 @@
         <input type="checkbox" bind:checked={$filters.savedOnly} />
         Seulement mes entreprises enregistrees
       </label>
+
+      {#if located}
+        <div class="radius">
+          <label class="check">
+            <input
+              type="checkbox"
+              checked={$filters.maxKm !== null}
+              onchange={(e) => toggleRadius(e.currentTarget.checked)}
+            />
+            Autour de chez moi : <strong>{radiusDraft} km</strong>
+          </label>
+          <input
+            class="slider"
+            type="range"
+            min="1"
+            max="150"
+            step="1"
+            aria-label="Rayon de recherche en kilometres"
+            bind:value={radiusDraft}
+            oninput={() => {
+              if ($filters.maxKm !== null) $filters.maxKm = radiusDraft;
+            }}
+          />
+          <div class="radius-foot small muted">
+            <span>{$home?.city || $home?.address}</span>
+            <button class="link" onclick={() => mapRef?.fitRadius()}>cadrer</button>
+          </div>
+        </div>
+
+        <select bind:value={$filters.sort} aria-label="Trier">
+          <option value="name">Trier par nom</option>
+          <option value="distance">Trier par distance</option>
+        </select>
+      {:else if $user}
+        <a class="small no-home" href="/settings#domicile">
+          Renseigne ton adresse pour filtrer et trier par distance →
+        </a>
+      {/if}
     </div>
 
     {#if $user}
@@ -172,7 +237,12 @@
             <span class="dot" class:saved={company.is_saved}></span>
             <span class="text">
               <strong>{company.name}</strong>
-              <span class="small muted">{company.city || 'position inconnue'}</span>
+              <span class="small muted">
+                {company.city || 'position inconnue'}
+                {#if company.distance_km !== null}
+                  · {formatKm(company.distance_km)}
+                {/if}
+              </span>
             </span>
             {#if company.open_jobs}
               <span class="badge">{company.open_jobs}</span>
@@ -184,7 +254,14 @@
   </aside>
 
   <div class="map-area">
-    <Map bind:this={mapRef} companies={$mappable} {selectedId} onselect={select} />
+    <Map
+      bind:this={mapRef}
+      companies={$mappable}
+      {selectedId}
+      onselect={select}
+      home={$home}
+      radiusKm={shownRadius}
+    />
   </div>
 
   {#if selected}
@@ -246,6 +323,31 @@
     margin: 0;
   }
   .check input { width: auto; flex-shrink: 0; }
+
+  .radius {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem 0.35rem;
+    background: #fff;
+  }
+  .radius .check { margin-bottom: 0.15rem; }
+  .slider { width: 100%; accent-color: var(--leaf); }
+
+  .radius-foot {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  /* Une adresse longue ne doit pas pousser le bouton hors du panneau */
+  .radius-foot span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .no-home { color: var(--leaf-dark); text-decoration: none; }
+  .no-home:hover { text-decoration: underline; }
 
   .controls {
     background: var(--surface);
