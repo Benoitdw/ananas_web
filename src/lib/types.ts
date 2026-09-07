@@ -1,6 +1,6 @@
 export type User = { id: number; email: string; created_at: string; is_admin: boolean };
 
-export type CompanySource = 'biowin' | 'curated' | 'from_user';
+export type CompanySource = 'biowin' | 'curated' | 'biopark' | 'from_user';
 
 export type Company = {
   id: number;

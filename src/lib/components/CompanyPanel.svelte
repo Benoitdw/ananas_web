@@ -6,6 +6,7 @@
   import { companyTags } from '$lib/stores/companies';
   import { formatKm, home } from '$lib/stores/home';
   import MatchBadge from '$lib/components/MatchBadge.svelte';
+  import { sourceLabel, sourceOrigin } from '$lib/sources';
 
   type Props = {
     company: Company;
@@ -191,9 +192,11 @@
       {#if fromUser}
         Proposee par {detail.submitted_by_email ?? 'un utilisateur'}
       {:else if detail.source_url}
-        <a href={detail.source_url} target="_blank" rel="noopener">Fiche BioWin d'origine</a>
-      {:else if detail.source === 'curated'}
-        Repertoire Ananas
+        <a href={detail.source_url} target="_blank" rel="noopener">
+          {sourceOrigin(detail.source)}
+        </a>
+      {:else}
+        {sourceLabel(detail.source)}
       {/if}
     </p>
   {/if}
