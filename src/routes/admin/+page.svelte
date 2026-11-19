@@ -13,7 +13,7 @@
    */
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
-  import { SOURCE_SHORT, sourceLabel, sourceShort } from '$lib/sources';
+  import { SOURCE_SHORT, matchesSource, sourceLabel, sourceShort } from '$lib/sources';
   import { authReady, user } from '$lib/stores/auth';
   import { companies, companyTags, loadCompanies } from '$lib/stores/companies';
   import type { AdminStats, AdminUser } from '$lib/types';
@@ -43,7 +43,7 @@
   const rows = $derived.by(() => {
     const needle = q.trim().toLowerCase();
     return $companies.filter((c) => {
-      if (source && c.source !== source) return false;
+      if (!matchesSource(c, source)) return false;
       if (!needle) return true;
       return `${c.name} ${c.city} ${c.type} ${companyTags(c).join(' ')}`
         .toLowerCase()

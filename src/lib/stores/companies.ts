@@ -7,6 +7,7 @@
  */
 import { derived, get, writable } from 'svelte/store';
 import { api } from '$lib/api';
+import { matchesSource } from '$lib/sources';
 import type { Company, Facets } from '$lib/types';
 
 export const companies = writable<Company[]>([]);
@@ -60,7 +61,7 @@ export const filtered = derived([companies, filters], ([$companies, $filters]) =
     if (c.is_hidden && !$filters.includeHidden) return false;
     if ($filters.savedOnly && !c.is_saved) return false;
     if ($filters.type && c.type !== $filters.type) return false;
-    if ($filters.source && c.source !== $filters.source) return false;
+    if (!matchesSource(c, $filters.source)) return false;
     if ($filters.tag && !companyTags(c).includes($filters.tag)) return false;
     // Une entreprise sans distance connue (pas de domicile, ou pas de
     // coordonnees) sort du perimetre: elle n'est pas "a moins de 30 km", on
