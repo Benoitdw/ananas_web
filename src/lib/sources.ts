@@ -12,6 +12,7 @@ export const SOURCE_LABELS: Record<CompanySource, string> = {
   biowin: 'Repertoire BioWin',
   curated: 'Repertoire Ananas',
   biopark: 'Annuaire BioPark',
+  'liste-an': 'Liste An',
   from_user: 'Proposee par un utilisateur'
 };
 
@@ -21,6 +22,7 @@ export const SOURCE_SHORT: Record<CompanySource, string> = {
   biowin: 'BioWin',
   curated: 'Ananas',
   biopark: 'BioPark',
+  'liste-an': 'Liste An',
   from_user: 'utilisateurs'
 };
 
