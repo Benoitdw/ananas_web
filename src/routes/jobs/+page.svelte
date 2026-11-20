@@ -53,7 +53,11 @@
       include_closed: String(includeClosed),
       include_hidden: String(includeHidden),
       relevant_only: String(relevantOnly),
-      scope
+      scope,
+      // Le filtrage et le tri sont faits cote client: il faut tout charger.
+      // Sans ca l'API coupe a 200 (son defaut) et les offres les plus
+      // anciennes disparaissent sans le moindre signe.
+      limit: '1000'
     });
     if (!$authReady || !$user) return;
     loading = true;
