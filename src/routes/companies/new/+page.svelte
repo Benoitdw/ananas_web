@@ -37,7 +37,6 @@
     phone: '',
     linkedin: ''
   });
-  let tags = $state<string[]>([]);
   let save = $state(true);
   let busy = $state(false);
   let error = $state('');
@@ -47,9 +46,9 @@
     if ($authReady && !$user) goto('/login');
   });
 
-  // Les facettes alimentent l'autocompletion des tags et la liste des types.
+  // Les facettes alimentent la liste des types.
   $effect(() => {
-    if ($authReady && $user && !$facets.tags.length) {
+    if ($authReady && $user && !$facets.types.length) {
       api.get<Facets>('/api/companies/facets').then((f) => facets.set(f)).catch(() => {});
     }
   });
@@ -60,7 +59,7 @@
     conflict = null;
     busy = true;
     try {
-      const created = await api.post<CompanyDetail>('/api/companies', { ...form, tags, save });
+      const created = await api.post<CompanyDetail>('/api/companies', { ...form, save });
       // Injecte dans le store si la carte a deja ete chargee, sinon elle la
       // trouvera a son prochain chargement.
       addCompany(created as unknown as Company);
@@ -90,7 +89,7 @@
   </p>
 
   <form onsubmit={submit}>
-    <CompanyFields bind:form bind:tags facets={$facets} />
+    <CompanyFields bind:form facets={$facets} />
 
     <label class="check card block save-check">
       <input type="checkbox" bind:checked={save} />

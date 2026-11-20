@@ -3,7 +3,6 @@
   import { api } from '$lib/api';
   import type { Company, CompanyDetail } from '$lib/types';
   import { user } from '$lib/stores/auth';
-  import { companyTags } from '$lib/stores/companies';
   import { formatKm, home } from '$lib/stores/home';
   import MatchBadge from '$lib/components/MatchBadge.svelte';
   import { sourceLabel, sourceOrigin } from '$lib/sources';
@@ -32,8 +31,6 @@
       .catch(() => (error = 'Fiche indisponible.'));
   });
 
-  // Tags BioWin et tags utilisateur affiches ensemble: un seul vocabulaire.
-  const tags = $derived(companyTags(detail ?? company));
 
   const fromUser = $derived((detail ?? company).source === 'from_user');
 
@@ -116,9 +113,9 @@
       <p class="baseline">{detail.baseline}</p>
     {/if}
 
-    {#if tags.length}
+    {#if company.liste_an_category}
       <div class="tags">
-        {#each tags as tag}<span class="tag">{tag}</span>{/each}
+        <span class="tag">Liste An · {company.liste_an_category}</span>
       </div>
     {/if}
 

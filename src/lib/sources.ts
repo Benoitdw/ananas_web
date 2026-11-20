@@ -26,22 +26,16 @@ export const SOURCE_SHORT: Record<CompanySource, string> = {
   from_user: 'utilisateurs'
 };
 
-/** Provenances qui sont des *listes*: une liste designe des fiches deja
- *  connues d'autres repertoires (qui gardent leur provenance et recoivent son
- *  tag) autant qu'elle en cree. Filtrer sur elle doit montrer les deux. */
-const LIST_TAGS: Partial<Record<CompanySource, string>> = {
-  'liste-an': 'Liste An'
-};
-
-/** Vrai si la fiche releve de la provenance filtree — pour une liste, aussi
- *  quand elle porte seulement son tag. */
+/** Vrai si la fiche releve de la provenance filtree. La Liste An designe
+ *  aussi des fiches d'autres repertoires (qui gardent leur provenance): c'est
+ *  sa categorie qui dit l'appartenance, pas la provenance. */
 export function matchesSource(
-  c: { source: string; tags: string },
+  c: { source: string; liste_an_category?: string | null },
   source: string
 ): boolean {
-  if (!source || c.source === source) return true;
-  const tag = LIST_TAGS[source as CompanySource]?.toLowerCase();
-  return !!tag && c.tags.split(',').some((t) => t.trim().toLowerCase() === tag);
+  if (!source) return true;
+  if (source === 'liste-an') return !!c.liste_an_category;
+  return c.source === source;
 }
 
 export function sourceShort(source: string): string {

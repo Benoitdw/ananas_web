@@ -6,6 +6,7 @@
   const links = [
     { href: '/map', label: 'Carte' },
     { href: '/jobs', label: 'Offres', auth: true },
+    { href: '/liste-an', label: 'Liste An', auth: true },
     { href: '/settings', label: 'Parametres', auth: true },
     // Cache pour les autres, mais c'est l'API qui protege: /api/admin/*
     // repond 403 a un compte ordinaire.

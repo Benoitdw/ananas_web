@@ -20,7 +20,6 @@
 
   let detail = $state<CompanyDetail | null>(null);
   let form = $state<CompanyFormFields | null>(null);
-  let tags = $state<string[]>([]);
   let loadError = $state('');
   let error = $state('');
   let conflict = $state<SubmitConflict | null>(null);
@@ -37,7 +36,7 @@
   });
 
   $effect(() => {
-    if (!$facets.tags.length) {
+    if (!$facets.types.length) {
       api.get<Facets>('/api/companies/facets').then((f) => facets.set(f)).catch(() => {});
     }
   });
@@ -49,7 +48,6 @@
       .then((d) => {
         if (id !== wanted) return;
         detail = d;
-        tags = d.tags ? d.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
         form = {
           name: d.name,
           website: d.website,
@@ -74,12 +72,6 @@
       });
   });
 
-  /** Les secteurs BioWin (`core_business`) ne sont pas editables: ils viennent
-   *  du repertoire d'origine et servent de vocabulaire commun. Les tags, si. */
-  const inheritedTags = $derived(
-    (detail?.core_business ?? '').split(',').map((t) => t.trim()).filter(Boolean)
-  );
-
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     if (!form) return;
@@ -88,7 +80,7 @@
     saved = false;
     busy = true;
     try {
-      detail = await api.patch<CompanyDetail>(`/api/companies/${id}`, { ...form, tags });
+      detail = await api.patch<CompanyDetail>(`/api/companies/${id}`, form);
       // La carte porte le nom, la ville et les coordonnees: elle doit suivre.
       loadCompanies().catch(() => {});
       saved = true;
@@ -139,20 +131,7 @@
     </dl>
 
     <form onsubmit={submit}>
-      <CompanyFields bind:form bind:tags facets={$facets} moreOpen={true} />
-
-      {#if inheritedTags.length}
-        <section class="card block">
-          <h2>Secteurs d'origine</h2>
-          <p class="small muted">
-            Herites du repertoire, non modifiables ici — ils servent de vocabulaire commun a tous
-            les filtres. Ajoute un tag si la classification est a completer.
-          </p>
-          <div class="tags">
-            {#each inheritedTags as tag}<span class="tag">{tag}</span>{/each}
-          </div>
-        </section>
-      {/if}
+      <CompanyFields bind:form facets={$facets} moreOpen={true} />
 
       {#if conflict}
         <div class="alert alert-warn">
@@ -196,8 +175,6 @@
 
   form { margin-top: 1.4rem; }
 
-  .block { padding: 1.4rem; margin-bottom: 1rem; }
-  .block h2 { font-size: 1rem; margin-bottom: 0.3rem; }
 
   .meta {
     display: flex;
@@ -211,7 +188,6 @@
   .meta dd { margin: 0; font-size: 0.88rem; }
   .meta code { font-size: 0.82rem; }
 
-  .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.7rem; }
 
   .alert { margin-bottom: 1rem; }
   .alert p { margin: 0 0 0.6rem; }
@@ -220,7 +196,6 @@
 
   @media (max-width: 640px) {
     .page { padding: 1.2rem 1rem 2.5rem; }
-    .block { padding: 1.1rem; }
     .actions .btn { flex: 1 1 auto; }
   }
 </style>

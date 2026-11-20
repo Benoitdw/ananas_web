@@ -48,7 +48,6 @@
   const selected = $derived($filtered.find((c) => c.id === selectedId) ?? null);
   const activeFilters = $derived(
     Number(!!$filters.type) +
-      Number(!!$filters.tag) +
       Number(!!$filters.source) +
       Number($filters.savedOnly) +
       Number($filters.maxKm !== null)
@@ -166,11 +165,6 @@
       <select bind:value={$filters.type} aria-label="Type d'organisation">
         <option value="">Tous les types</option>
         {#each $facets.types as type}<option value={type}>{type}</option>{/each}
-      </select>
-
-      <select bind:value={$filters.tag} aria-label="Tag">
-        <option value="">Tous les tags</option>
-        {#each $facets.tags as tag}<option value={tag}>{tag}</option>{/each}
       </select>
 
       <select bind:value={$filters.source} aria-label="Provenance">

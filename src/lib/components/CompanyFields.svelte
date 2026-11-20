@@ -8,12 +8,10 @@
    * que ce qui doit rester identique — les libelles, l'ordre et le decoupage
    * des champs — pour qu'une fiche corrigee se remplisse comme elle s'ecrit.
    */
-  import TagInput from '$lib/components/TagInput.svelte';
   import type { CompanyFormFields, Facets } from '$lib/types';
 
   type Props = {
     form: CompanyFormFields;
-    tags: string[];
     facets: Facets;
     /** Deplie d'emblee la section facultative — a l'edition, ces champs sont
      *  souvent deja remplis et les cacher donnerait l'impression de les perdre. */
@@ -21,23 +19,13 @@
   };
   // $bindable sans que personne ne s'y lie: c'est l'etat local du depliage,
   // dont la valeur initiale vient de la page.
-  let { form = $bindable(), tags = $bindable(), facets, moreOpen = $bindable(false) }: Props =
-    $props();
+  let { form = $bindable(), facets, moreOpen = $bindable(false) }: Props = $props();
 </script>
 
 <section class="card block">
   <div class="field">
     <label for="name">Nom de l'entreprise <span class="req">*</span></label>
     <input id="name" type="text" bind:value={form.name} required minlength="2" />
-  </div>
-
-  <div class="field">
-    <label for="tags">Tags</label>
-    <TagInput bind:value={tags} suggestions={facets.tags} />
-    <p class="small muted hint">
-      Ce sont eux qui permettront aux autres de la retrouver dans les filtres. Reutilise les tags
-      proposes plutot que d'en inventer des variantes.
-    </p>
   </div>
 
   <div class="row">

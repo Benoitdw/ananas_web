@@ -10,6 +10,8 @@ export type Company = {
   core_business: string;
   tags: string;
   source: CompanySource;
+  /** Categorie dans la Liste An (Biotech, Hopital...); null = hors liste. */
+  liste_an_category: string | null;
   city: string;
   lat: number | null;
   lon: number | null;
@@ -253,4 +255,21 @@ export type SubmitConflict = {
   detail: string;
   company_id: number;
   company_name: string;
+};
+
+/** Une offre de l'onglet Liste An: pas de score, juste le scraping trie pour
+ *  un profil scientifique. `excluded` donne la raison quand le filtre l'ecarte. */
+export type ListeAnJob = {
+  id: number;
+  title: string;
+  url: string;
+  location: string | null;
+  department: string | null;
+  posted_at: string | null;
+  first_seen_at: string;
+  company_id: number;
+  company_name: string;
+  company_slug: string;
+  category: string;
+  excluded: string | null;
 };

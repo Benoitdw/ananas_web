@@ -2,14 +2,9 @@
   /**
    * Saisie d'une liste de termes du profil (competences, secteurs, langues…).
    *
-   * Distinct de ``TagInput``, qui sert au repertoire d'entreprises: les deux
-   * ressemblent a des chips, mais leurs vocabulaires n'ont rien a voir. Un tag
-   * d'entreprise est capitalise et partage entre utilisateurs; un terme de
-   * profil est en minuscules parce qu'il doit rencontrer son equivalent
-   * extrait des offres — c'est cette forme exacte que compare
-   * ``ananas.ai.matching``. Fusionner les deux composants ferait de la
-   * normalisation un parametre, et de la premiere faute de reglage un profil
-   * qui ne matche plus rien.
+   * Un terme de profil est en minuscules parce qu'il doit rencontrer son
+   * equivalent extrait des offres — c'est cette forme exacte que compare
+   * ``ananas.ai.matching``.
    */
   type Props = {
     value: string[];

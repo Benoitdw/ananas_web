@@ -15,7 +15,7 @@
   import { api } from '$lib/api';
   import { SOURCE_SHORT, matchesSource, sourceLabel, sourceShort } from '$lib/sources';
   import { authReady, user } from '$lib/stores/auth';
-  import { companies, companyTags, loadCompanies } from '$lib/stores/companies';
+  import { companies, loadCompanies } from '$lib/stores/companies';
   import type { AdminStats, AdminUser } from '$lib/types';
 
   let tab = $state<'companies' | 'users'>('companies');
@@ -45,7 +45,7 @@
     return $companies.filter((c) => {
       if (!matchesSource(c, source)) return false;
       if (!needle) return true;
-      return `${c.name} ${c.city} ${c.type} ${companyTags(c).join(' ')}`
+      return `${c.name} ${c.city} ${c.type} ${c.liste_an_category ?? ''}`
         .toLowerCase()
         .includes(needle);
     });
